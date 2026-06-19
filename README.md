@@ -1,17 +1,26 @@
-# BIXI Pixoo 64 Display
+# àVélo Pixoo 64 Display
 
-Petit daemon Python pour Raspberry Pi OS Lite qui affiche des stations BIXI en temps reel sur un Divoom Pixoo 64.
+Petit daemon Python pour Raspberry Pi OS Lite qui affiche des stations [àVélo](https://www.avelo.ca) (le reseau de velos en libre-service de la Ville de Quebec, opere par le RTC) en temps reel sur un Divoom Pixoo 64.
 
-Copie `config.example.json` vers `config.json` puis renseigne tes stations. Le fichier accepte les `station_id` GBFS et les `short_name` BIXI publics comme `6026`. `config.json` est ignore par git (il contient tes vraies stations).
+àVélo est un reseau **100% electrique** : l'affichage montre donc deux colonnes par station, les **velos** disponibles et les **bornes** libres (pas de colonne velo electrique separee, contrairement a BIXI).
+
+![Exemple - Place Laurier](example-place-laurier.png)
+
+Exemple ci-dessus : les 3 stations les plus proches de **Place Laurier** (Sainte-Foy) un apres-midi.
+
+Le flux de donnees est le GBFS v3 d'àVélo :
+`https://quebec.publicbikesystem.net/customer/gbfs/v3.0/gbfs.json`
+
+Copie `config.example.json` vers `config.json` puis renseigne tes stations (les `station_id` GBFS d'àVélo, par ex. `81` = Samuel-King / Quatre-Bourgeois). `config.json` est ignore par git.
 
 ## Installation sur le Pi
 
 ```bash
 cp config.example.json config.json   # puis edite favorite_stations
-sudo mkdir -p /opt/bixi-display
-sudo cp main.py pixoo.py config.json requirements.txt bixi-display.service Bixi_logo2.png Bixi_logo2_27.png /opt/bixi-display/
-sudo chown -R "$USER":"$USER" /opt/bixi-display
-cd /opt/bixi-display
+sudo mkdir -p /opt/avelo-display
+sudo cp main.py pixoo.py config.json requirements.txt bixi-display.service avelo_logo_27.png /opt/avelo-display/
+sudo chown -R "$USER":"$USER" /opt/avelo-display
+cd /opt/avelo-display
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 sudo cp bixi-display.service /etc/systemd/system/
@@ -35,7 +44,7 @@ Environment=PIXOO_IP=192.168.1.123
 ## Mode setup
 
 ```bash
-cd /opt/bixi-display
+cd /opt/avelo-display
 .venv/bin/python main.py --setup
 ```
 

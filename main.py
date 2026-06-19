@@ -23,11 +23,12 @@ import pixoo
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = Path(os.getenv("BIXI_CONFIG_PATH", BASE_DIR / "config.json"))
 LOG_PATH = Path(os.getenv("BIXI_LOG_PATH", "/var/log/bixi-display.log"))
-LOGO_PATH = Path(os.getenv("BIXI_LOGO_PATH", BASE_DIR / "Bixi_logo2_27.png"))
+LOGO_PATH = Path(os.getenv("AVELO_LOGO_PATH", BASE_DIR / "avelo_logo_27.png"))
 STATUS_PATH = Path(os.getenv("BIXI_STATUS_PATH", BASE_DIR / "status.json"))
 
-STATION_INFORMATION_URL = "https://gbfs.velobixi.com/gbfs/en/station_information.json"
-STATION_STATUS_URL = "https://gbfs.velobixi.com/gbfs/en/station_status.json"
+# àVélo (Québec City, RTC) GBFS v3 feeds — an all-electric PBSC network.
+STATION_INFORMATION_URL = "https://quebec.publicbikesystem.net/customer/gbfs/v3.0/station_information"
+STATION_STATUS_URL = "https://quebec.publicbikesystem.net/customer/gbfs/v3.0/station_status"
 
 REQUEST_TIMEOUT_SECONDS = 5
 REQUEST_RETRIES = 3
@@ -270,13 +271,13 @@ def render_station_image(stations: list[dict[str, Any]], ssid: str | None = None
 
 
 # Column layout for the table: (icon key, color, number right edge x (exclusive), icon center x).
+# àVélo is an all-electric fleet, so there is no separate e-bike column: just bikes + docks.
 # The park column ends at 64 so its last pixel is column 63 (full width, no right margin).
 TABLE_COLUMNS = [
-    ("bike", (76, 235, 115), 44, 40),
-    ("bolt", (255, 224, 64), 54, 51),
-    ("park", (96, 184, 255), 64, 60),
+    ("bike", (76, 235, 115), 54, 49),
+    ("park", (96, 184, 255), 64, 59),
 ]
-NAME_MAX_WIDTH = 36
+NAME_MAX_WIDTH = 44  # wider names, since dropping the e-bike column freed horizontal space
 
 # Slightly different name tint per row to tell them apart.
 NAME_TINTS = [
@@ -294,8 +295,6 @@ def draw_table_header(draw: ImageDraw.ImageDraw, y: int) -> None:
     for key, color, _right, center_x in TABLE_COLUMNS:
         if key == "bike":
             draw_bike_icon(draw, center_x - 6, y, color)
-        elif key == "bolt":
-            draw_bolt_icon(draw, center_x - 2, y + 1, color)
         elif key == "park":
             draw_tiny_text(draw, center_x - 2, y + 1, "P", color)
 
@@ -323,15 +322,15 @@ def draw_station_table_row(
     row_index: int,
 ) -> None:
     name = clip_station_name(
-        station_name_label(str(station.get("name", station.get("station_id", "")))),
+        station_name_label(station_raw_name(station)),
         NAME_MAX_WIDTH,
     )
     name_y = y + max(0, (row_height - FONT_4X6_HEIGHT) // 2)
     draw_station_name(draw, 0, name_y, name, NAME_TINTS[row_index % len(NAME_TINTS)])
 
+    # All àVélo bikes are electric, so the single bike column is the total available.
     values = [
-        int(station.get("num_bikes_available", 0) or 0),
-        count_ebikes(station),
+        count_available_bikes(station),
         int(station.get("num_docks_available", 0) or 0),
     ]
     number_y = y + max(0, (row_height - FONT_4X6_HEIGHT) // 2)
@@ -343,6 +342,29 @@ def draw_station_table_row(
         else:
             number_x = right - width          # multi-digit: right-aligned to the column edge
         draw_tiny_text(draw, number_x, number_y, text, color)
+
+
+def station_raw_name(station: dict[str, Any]) -> str:
+    """Station name, handling GBFS v3 where ``name`` is a list of {text, language}."""
+    name = station.get("name", station.get("station_id", ""))
+    if isinstance(name, list):
+        for entry in name:
+            if isinstance(entry, dict) and entry.get("text"):
+                return str(entry["text"])
+        return ""
+    return str(name)
+
+
+def count_available_bikes(station: dict[str, Any]) -> int:
+    """Total bikes available. àVélo is all-electric, so we sum every vehicle type."""
+    direct = station.get("num_bikes_available")
+    if direct is not None:
+        return int(direct or 0)
+    total = 0
+    for item in station.get("vehicle_types_available") or []:
+        if isinstance(item, dict):
+            total += int(item.get("count", 0) or 0)
+    return total
 
 
 def count_ebikes(station: dict[str, Any]) -> int:
