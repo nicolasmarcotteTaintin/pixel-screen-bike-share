@@ -1,0 +1,17 @@
+# Local config with your real station IDs (copy config.example.json -> config.json)
+config.json
+
+# Runtime artifacts
+status.json
+preview*.png
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editor / OS / tooling
+.DS_Store
+.claude/
