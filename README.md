@@ -4,6 +4,18 @@ Petit daemon Python pour Raspberry Pi OS Lite qui affiche des stations BIXI en t
 
 Copie `config.example.json` vers `config.json` puis renseigne tes stations. Le fichier accepte les `station_id` GBFS et les `short_name` BIXI publics comme `6026`. `config.json` est ignore par git (il contient tes vraies stations).
 
+## Materiel
+
+| Composant | Lien | Prix approx. (CAD) |
+|-----------|------|--------------------|
+| Divoom Pixoo 64 (ecran 64x64 pixels) | [Amazon](https://www.amazon.ca/s?k=Divoom+Pixoo+64) | ~80 $ |
+| Raspberry Pi Zero 2 W | [Amazon](https://www.amazon.ca/s?k=Raspberry+Pi+Zero+2+W) | ~25 $ |
+| Boitier pour Pi Zero 2 W *(optionnel)* | [Amazon](https://www.amazon.ca/s?k=Raspberry+Pi+Zero+2+W+case) | ~10 $ |
+
+**Cout total : ~105 $ CAD** (~115 $ avec le boitier).
+
+> Prix indicatifs, sujets a variation. Une carte microSD et une alimentation USB pour le Pi sont aussi necessaires (souvent deja a la maison).
+
 ## Installation sur le Pi
 
 ```bash
