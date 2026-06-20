@@ -1,0 +1,18 @@
+[Unit]
+Description=Pixel Transit Pixoo 64 display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pixel-transit
+Environment=PIXEL_TRANSIT_CONFIG_PATH=/opt/pixel-transit/config.json
+Environment=PIXEL_TRANSIT_LOG_PATH=/var/log/pixel-transit.log
+# Optional: pin the Pixoo IP if zeroconf discovery is unreliable.
+# Environment=PIXOO_IP=192.168.1.123
+ExecStart=/opt/pixel-transit/.venv/bin/python -m pixel_transit
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

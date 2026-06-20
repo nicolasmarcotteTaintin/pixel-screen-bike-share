@@ -1,9 +1,23 @@
 {
+  "network": "avelo",
   "favorite_stations": [
-    "6026",
-    "6184",
-    "7060"
+    "81",
+    "85",
+    "141"
   ],
+  "communauto": {
+    "city_id": 59,
+    "home": {
+      "lat": 45.5019,
+      "lon": -73.5674
+    },
+    "radius_km": 2.0,
+    "services": [
+      "flex",
+      "station"
+    ],
+    "max_rows": 3
+  },
   "refresh_seconds": 60,
   "brightness": 80
 }
