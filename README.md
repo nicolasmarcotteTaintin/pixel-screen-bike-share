@@ -17,7 +17,7 @@ Copie `config.example.json` vers `config.json` puis renseigne tes stations (les 
 
 | Composant | Lien | Prix approx. (CAD) |
 |-----------|------|--------------------|
-| Divoom Pixoo 64 (ecran 64x64 pixels) | [Amazon](https://www.amazon.ca/s?k=Divoom+Pixoo+64) | ~80 $ |
+| Divoom Pixoo 64 (ecran 64x64 pixels) | [Addison Electronique](https://addison-electronique.com/fr/catalogsearch/result/?q=pixoo) | ~80 $ |
 | Raspberry Pi Zero 2 W | [Amazon](https://www.amazon.ca/s?k=Raspberry+Pi+Zero+2+W) | ~25 $ |
 | Boitier pour Pi Zero 2 W *(optionnel)* | [Amazon](https://www.amazon.ca/s?k=Raspberry+Pi+Zero+2+W+case) | ~10 $ |
 
