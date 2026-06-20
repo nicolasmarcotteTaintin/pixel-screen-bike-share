@@ -13,6 +13,18 @@ Le flux de donnees est le GBFS v3 d'àVélo :
 
 Copie `config.example.json` vers `config.json` puis renseigne tes stations (les `station_id` GBFS d'àVélo, par ex. `81` = Samuel-King / Quatre-Bourgeois). `config.json` est ignore par git.
 
+## Materiel
+
+| Composant | Lien | Prix approx. (CAD) |
+|-----------|------|--------------------|
+| Divoom Pixoo 64 (ecran 64x64 pixels) | [Amazon](https://www.amazon.ca/s?k=Divoom+Pixoo+64) | ~80 $ |
+| Raspberry Pi Zero 2 W | [Amazon](https://www.amazon.ca/s?k=Raspberry+Pi+Zero+2+W) | ~25 $ |
+| Boitier pour Pi Zero 2 W *(optionnel)* | [Amazon](https://www.amazon.ca/s?k=Raspberry+Pi+Zero+2+W+case) | ~10 $ |
+
+**Cout total : ~105 $ CAD** (~115 $ avec le boitier).
+
+> Prix indicatifs, sujets a variation. Une carte microSD et une alimentation USB pour le Pi sont aussi necessaires (souvent deja a la maison).
+
 ## Installation sur le Pi
 
 ```bash
