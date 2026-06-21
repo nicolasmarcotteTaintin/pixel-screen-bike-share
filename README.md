@@ -159,9 +159,10 @@ l'app si non accessible en écriture). Un instantané de santé est écrit dans
 Code prêt pour un **écran IPS 1,3" 240×240 (ST7789, SPI)** — typiquement le
 *Waveshare 1.3inch LCD HAT* (joystick + 3 touches). Il affiche d'abord un menu de
 **langue** (Français / English), puis un **menu de réglages** (localisé) :
-**Mode d'affichage**, **Luminosité** (curseur 0–100 %) et **Langue**. Les choix
-sont écrits dans `config.json` (`language`, `mode`, `brightness`) — la luminosité
-est reprise en direct par le daemon. Ce module est
+**Mode d'affichage**, **Luminosité** (curseur 0–100 %), **Veille du soir**
+(activer + heures d'extinction/rallumage) et **Langue**. Les choix sont écrits
+dans `config.json` (`language`, `mode`, `brightness`, `off_enabled`/`off_start`/`off_end`)
+— luminosité et veille sont repris en direct par le daemon. Ce module est
 isolé dans [src/pixel_transit/lcd/](src/pixel_transit/lcd/) et **n'est pas branché**
 sur le daemon d'affichage Pixoo ; il se lance séparément.
 

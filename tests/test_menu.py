@@ -4,7 +4,9 @@ from pixel_transit.lcd.menu import (
     BrightnessScreen,
     language_menu,
     main_menu,
+    minutes_to_hhmm,
     mode_menu,
+    sleep_screen,
 )
 
 
@@ -38,10 +40,29 @@ def test_active_key_sets_initial_selection():
     assert language_menu(active_key="en").current_key == "en"
 
 
-def test_main_menu_has_brightness():
+def test_main_menu_has_brightness_and_sleep():
     keys = [key for key, _, _ in main_menu("fr").options]
-    assert keys == ["mode", "brightness", "language"]
+    assert keys == ["mode", "brightness", "sleep", "language"]
     assert main_menu("en").options[1][1] == "Brightness"
+
+
+def test_sleep_screen_toggle_and_time_steps():
+    screen = sleep_screen("fr", enabled=True, off_start="21:00", off_end="08:00")
+    assert screen.enabled is True
+    screen.adjust(1)              # field 0 = state -> toggles off
+    assert screen.enabled is False
+    screen.move(1)               # field 1 = off time
+    screen.adjust(1)             # +30 min
+    assert minutes_to_hhmm(screen.off_minutes) == "21:30"
+    screen.move(1)               # field 2 = on time
+    screen.adjust(-1)            # -30 min, wraps within day
+    assert minutes_to_hhmm(screen.on_minutes) == "07:30"
+
+
+def test_minutes_hhmm_roundtrip():
+    assert minutes_to_hhmm(21 * 60) == "21:00"
+    assert minutes_to_hhmm(0) == "00:00"
+    assert minutes_to_hhmm(24 * 60) == "00:00"
 
 
 def test_brightness_adjust_and_clamp():

@@ -25,7 +25,14 @@ import logging
 import time
 
 from ..config import load_config, save_config
-from .menu import BrightnessScreen, language_menu, main_menu, mode_menu
+from .menu import (
+    BrightnessScreen,
+    language_menu,
+    main_menu,
+    minutes_to_hhmm,
+    mode_menu,
+    sleep_screen,
+)
 
 POLL_SECONDS = 0.05
 CONFIRM_SECONDS = 1.2
@@ -65,6 +72,17 @@ def run_menu() -> None:
                         screen.adjust(1)
                     elif event == "press":
                         confirmed = True
+                elif state == "sleep":
+                    if event == "up":
+                        screen.move(-1)
+                    elif event == "down":
+                        screen.move(1)
+                    elif event == "left":
+                        screen.adjust(-1)
+                    elif event == "right":
+                        screen.adjust(1)
+                    elif event == "press":
+                        confirmed = True
                 else:  # list screens
                     if event in ("up", "left"):
                         screen.move(-1)
@@ -99,10 +117,18 @@ def _confirm(state, screen, display):
     if state == "main":
         lang = _current_lang()
         choice = screen.current_key
+        config = load_config()
         if choice == "mode":
-            return "mode", mode_menu(lang, active_key=load_config().get("mode"))
+            return "mode", mode_menu(lang, active_key=config.get("mode"))
         if choice == "brightness":
-            return "brightness", BrightnessScreen(load_config().get("brightness", 80), lang=lang)
+            return "brightness", BrightnessScreen(config.get("brightness", 80), lang=lang)
+        if choice == "sleep":
+            return "sleep", sleep_screen(
+                lang,
+                enabled=config.get("off_enabled", True),
+                off_start=config.get("off_start", "21:00"),
+                off_end=config.get("off_end", "08:00"),
+            )
         return "language", language_menu(active_key=lang)
 
     if state == "mode":
@@ -112,6 +138,17 @@ def _confirm(state, screen, display):
 
     if state == "brightness":
         _save("brightness", screen.value)
+        _flash(display, screen)
+        return "main", main_menu(_current_lang())
+
+    if state == "sleep":
+        config = load_config()
+        config["off_enabled"] = screen.enabled
+        config["off_start"] = minutes_to_hhmm(screen.off_minutes)
+        config["off_end"] = minutes_to_hhmm(screen.on_minutes)
+        save_config(config)
+        logging.info("LCD menu: evening-off enabled=%s %s-%s",
+                     screen.enabled, config["off_start"], config["off_end"])
         _flash(display, screen)
         return "main", main_menu(_current_lang())
 

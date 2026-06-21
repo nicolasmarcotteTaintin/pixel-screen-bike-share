@@ -21,6 +21,8 @@ def _parse_minutes(value: Any) -> int | None:
 
 def is_off_now(config: dict[str, Any], now: time.struct_time | None = None) -> bool:
     """True if the current local time falls in the configured off-window."""
+    if not config.get("off_enabled", True):
+        return False
     start = _parse_minutes(config.get("off_start", ""))
     end = _parse_minutes(config.get("off_end", ""))
     if start is None or end is None or start == end:

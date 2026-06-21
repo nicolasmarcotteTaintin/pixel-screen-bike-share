@@ -37,6 +37,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "refresh_seconds": 60,
     "brightness": 80,
+    "off_enabled": True,
     "off_start": "",
     "off_end": "",
 }

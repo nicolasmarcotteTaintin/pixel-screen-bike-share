@@ -55,6 +55,7 @@ MAIN_STRINGS = {
         "options": [
             ("mode", "Mode d'affichage", ""),
             ("brightness", "Luminosité", ""),
+            ("sleep", "Veille du soir", ""),
             ("language", "Langue", ""),
         ],
     },
@@ -64,10 +65,30 @@ MAIN_STRINGS = {
         "options": [
             ("mode", "Display mode", ""),
             ("brightness", "Brightness", ""),
+            ("sleep", "Evening off", ""),
             ("language", "Language", ""),
         ],
     },
 }
+
+SLEEP_STRINGS = {
+    "fr": {
+        "title": "Veille du soir",
+        "footer": "↕ champ · ←/→ régler · OK",
+        "confirmed": "Validé ✓",
+        "enabled": "État", "on": "Activée", "off": "Désactivée",
+        "off_at": "Éteindre à", "on_at": "Rallumer à",
+    },
+    "en": {
+        "title": "Evening off",
+        "footer": "↕ field · ←/→ adjust · OK",
+        "confirmed": "Saved ✓",
+        "enabled": "State", "on": "On", "off": "Off",
+        "off_at": "Off at", "on_at": "On at",
+    },
+}
+
+TIME_STEP_MIN = 30
 
 BRIGHTNESS_STRINGS = {
     "fr": {"title": "Luminosité", "footer": "Joystick ←/→ · valider", "confirmed": "Validé ✓"},
@@ -261,3 +282,86 @@ class BrightnessScreen:
 
 def _clamp(value: int) -> int:
     return max(0, min(100, int(value)))
+
+
+def minutes_to_hhmm(minutes: int) -> str:
+    minutes %= 24 * 60
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
+
+
+def hhmm_to_minutes(value: str, default: int) -> int:
+    try:
+        hours, mins = str(value).strip().split(":")
+        total = int(hours) * 60 + int(mins)
+    except (ValueError, AttributeError):
+        return default
+    return total % (24 * 60)
+
+
+@dataclass
+class SleepScreen:
+    """Evening-off editor: enable toggle + off time + on time (joystick)."""
+
+    enabled: bool
+    off_minutes: int
+    on_minutes: int
+    lang: str = "fr"
+    field: int = 0  # 0 = state, 1 = off time, 2 = on time
+
+    def move(self, delta: int) -> None:
+        self.field = (self.field + delta) % 3
+
+    def adjust(self, delta: int) -> None:
+        if self.field == 0:
+            self.enabled = not self.enabled
+        elif self.field == 1:
+            self.off_minutes = (self.off_minutes + delta * TIME_STEP_MIN) % (24 * 60)
+        else:
+            self.on_minutes = (self.on_minutes + delta * TIME_STEP_MIN) % (24 * 60)
+
+    def render(self, confirmed: bool = False) -> Image.Image:
+        strings = SLEEP_STRINGS.get(self.lang, SLEEP_STRINGS["fr"])
+        image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
+        draw = ImageDraw.Draw(image)
+
+        draw.text((16, 12), strings["title"], font=_load_font(24), fill=TITLE)
+        draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
+
+        label_font = _load_font(18)
+        value_font = _load_font(18)
+        rows = [
+            (strings["enabled"], strings["on"] if self.enabled else strings["off"]),
+            (strings["off_at"], minutes_to_hhmm(self.off_minutes)),
+            (strings["on_at"], minutes_to_hhmm(self.on_minutes)),
+        ]
+        row_height = 50
+        top = 56
+        for index, (label, value) in enumerate(rows):
+            y = top + index * (row_height + 6)
+            is_selected = index == self.field
+            # Disabled times are dimmed.
+            dim = (not self.enabled) and index > 0
+            draw.rounded_rectangle(
+                (12, y, SCREEN_SIZE - 12, y + row_height),
+                radius=10,
+                fill=ROW_BG_SELECTED if is_selected else ROW_BG,
+            )
+            draw.text((24, y + 15), label, font=label_font,
+                      fill=TITLE if is_selected else (TEXT_DIM if dim else TEXT))
+            vw = draw.textlength(value, font=value_font)
+            draw.text((SCREEN_SIZE - 28 - vw, y + 15), value, font=value_font,
+                      fill=TITLE if is_selected else (TEXT_DIM if dim else ACCENT))
+
+        footer = strings["confirmed"] if confirmed else strings["footer"]
+        draw.text((16, SCREEN_SIZE - 22), footer, font=_load_font(13),
+                  fill=ACCENT if confirmed else TEXT_DIM)
+        return image
+
+
+def sleep_screen(lang: str, enabled: bool, off_start: str, off_end: str) -> SleepScreen:
+    return SleepScreen(
+        enabled=enabled,
+        off_minutes=hhmm_to_minutes(off_start, 21 * 60),
+        on_minutes=hhmm_to_minutes(off_end, 8 * 60),
+        lang=lang,
+    )

@@ -22,6 +22,7 @@
   },
   "refresh_seconds": 60,
   "brightness": 80,
+  "off_enabled": true,
   "off_start": "21:00",
   "off_end": "08:00"
 }
