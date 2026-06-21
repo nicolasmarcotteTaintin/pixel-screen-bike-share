@@ -154,6 +154,32 @@ Les logs vont dans `/var/log/pixel-transit.log` (repli vers le dossier de
 l'app si non accessible en écriture). Un instantané de santé est écrit dans
 `status.json` — `cat status.json` pour diagnostiquer rapidement.
 
+## Écran LCD 1,3" (menu de sélection du mode) — *préparé, pas encore intégré*
+
+Code prêt pour un **écran IPS 1,3" 240×240 (ST7789, SPI)** — typiquement le
+*Waveshare 1.3inch LCD HAT* (joystick + 3 touches). Il affiche un **menu** pour
+choisir l'un des 3 modes et écrit le choix dans `config.json`. Ce module est
+isolé dans [src/pixel_transit/lcd/](src/pixel_transit/lcd/) et **n'est pas branché**
+sur le daemon d'affichage Pixoo ; il se lance séparément.
+
+Aperçu du menu sans matériel :
+
+```bash
+.venv/bin/python -m pixel_transit.lcd --preview menu.png --active velo_communauto
+```
+
+Sur le Pi (active le SPI avec `sudo raspi-config` → Interface Options → SPI) :
+
+```bash
+.venv/bin/pip install -e ".[lcd]"     # spidev, RPi.GPIO, numpy
+.venv/bin/python -m pixel_transit.lcd
+```
+
+Commandes : joystick haut/bas pour naviguer, **OK** (clic joystick) pour valider ;
+**KEY1/KEY2/KEY3** sélectionnent directement l'option 1/2/3. Brochage (BCM) par
+défaut du HAT dans [st7789.py](src/pixel_transit/lcd/st7789.py) et
+[buttons.py](src/pixel_transit/lcd/buttons.py).
+
 ## Tests
 
 ```bash
