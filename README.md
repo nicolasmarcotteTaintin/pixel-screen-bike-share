@@ -67,20 +67,32 @@ Copie `config.example.json` vers `config.json` et choisis le réseau :
 ```json
 {
   "network": "avelo",
+  "mode": "velo_communauto",
+  "rotate_seconds": 10,
   "favorite_stations": ["81", "85", "141"],
   "communauto": {
-    "city_id": 59,
-    "home": { "lat": 45.5019, "lon": -73.5674 },
+    "city_id": 90,
+    "home": { "lat": 46.7803, "lon": -71.2900 },
     "radius_km": 2.0,
     "services": ["flex", "station"],
     "max_rows": 3
   },
   "refresh_seconds": 60,
-  "brightness": 80
+  "brightness": 80,
+  "off_start": "21:00",
+  "off_end": "08:00"
 }
 ```
 
-- **`network`** : `"bixi"`, `"avelo"` ou `"communauto"`.
+- **`mode`** : option d'intégration affichée sur le module —
+  1. `"velo"` : vélo uniquement ;
+  2. `"velo_communauto"` : vélo + Communauto en alternance (chaque `rotate_seconds`) ;
+  3. `"communauto"` : Communauto uniquement.
+- **`rotate_seconds`** : durée de chaque écran en mode alternance (défaut 10 s).
+- **`network`** : le système de vélos utilisé pour le côté « vélo » — `"bixi"` ou `"avelo"`.
+- **`off_start` / `off_end`** : plage d'extinction de l'écran (format `"HH:MM"`,
+  24 h, peut traverser minuit). L'écran s'éteint à `off_start` et se rallume à
+  `off_end`. Laisser les deux vides pour désactiver. Ex. `21:00` → `08:00`.
 - **`favorite_stations`** (BIXI/àVélo) : `station_id` GBFS ou `short_name` public
   (ex. `6026` pour BIXI, `81` pour àVélo).
 - **`communauto`** :

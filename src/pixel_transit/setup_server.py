@@ -9,7 +9,13 @@ from typing import Any
 from flask import Flask, redirect, request
 
 from .config import load_config, save_config
-from .providers.registry import NETWORK_NAMES
+from .providers.registry import BIKE_NETWORKS
+
+MODE_LABELS = {
+    "velo": "1. Vélo uniquement",
+    "velo_communauto": "2. Vélo + Communauto (alternance)",
+    "communauto": "3. Communauto uniquement",
+}
 
 
 def run_setup_server(host: str = "0.0.0.0", port: int = 8080) -> None:
@@ -22,7 +28,9 @@ def run_setup_server(host: str = "0.0.0.0", port: int = 8080) -> None:
     @app.post("/")
     def save() -> Any:
         config = load_config()
+        config["mode"] = request.form.get("mode", config["mode"]).lower()
         config["network"] = request.form.get("network", config["network"]).lower()
+        config["rotate_seconds"] = max(2, _int(request.form.get("rotate_seconds"), 10))
         config["favorite_stations"] = [
             line.strip()
             for line in request.form.get("favorite_stations", "").splitlines()
@@ -30,6 +38,8 @@ def run_setup_server(host: str = "0.0.0.0", port: int = 8080) -> None:
         ]
         config["refresh_seconds"] = max(10, min(3600, _int(request.form.get("refresh_seconds"), 60)))
         config["brightness"] = max(0, min(100, _int(request.form.get("brightness"), 80)))
+        config["off_start"] = request.form.get("off_start", "").strip()
+        config["off_end"] = request.form.get("off_end", "").strip()
 
         communauto = config.setdefault("communauto", {})
         communauto["city_id"] = _int(request.form.get("city_id"), communauto.get("city_id", 59))
@@ -65,9 +75,13 @@ def _render_page(config: dict[str, Any], message: str) -> str:
     communauto = config.get("communauto", {})
     home = communauto.get("home", {})
     services = communauto.get("services", ["flex", "station"])
-    options = "\n".join(
+    mode_options = "\n".join(
+        f'<option value="{key}"{" selected" if key == config["mode"] else ""}>{label}</option>'
+        for key, label in MODE_LABELS.items()
+    )
+    bike_options = "\n".join(
         f'<option value="{n}"{" selected" if n == config["network"] else ""}>{n}</option>'
-        for n in NETWORK_NAMES
+        for n in BIKE_NETWORKS
     )
     return f"""<!doctype html>
 <html lang="fr">
@@ -93,11 +107,16 @@ def _render_page(config: dict[str, Any], message: str) -> str:
     <h1>Pixel Transit</h1>
     <p class="saved">{message}</p>
     <form method="post">
-      <label for="network">Réseau affiché</label>
-      <select id="network" name="network">{options}</select>
+      <label for="mode">Mode d'affichage</label>
+      <select id="mode" name="mode">{mode_options}</select>
+
+      <label for="rotate_seconds">Alternance, secondes <span class="hint">(mode 2)</span></label>
+      <input id="rotate_seconds" name="rotate_seconds" type="number" min="2" max="600" value="{config.get('rotate_seconds', 10)}">
 
       <fieldset>
-        <legend>Vélos en libre-service (BIXI / àVélo)</legend>
+        <legend>Vélos en libre-service</legend>
+        <label for="network">Système de vélos</label>
+        <select id="network" name="network">{bike_options}</select>
         <label for="favorite_stations">Stations favorites, une par ligne <span class="hint">(station_id ou short_name)</span></label>
         <textarea id="favorite_stations" name="favorite_stations" rows="5">{stations}</textarea>
       </fieldset>
@@ -128,6 +147,20 @@ def _render_page(config: dict[str, Any], message: str) -> str:
 
       <label for="brightness">Luminosité, 0 à 100</label>
       <input id="brightness" name="brightness" type="number" min="0" max="100" value="{config['brightness']}">
+
+      <fieldset>
+        <legend>Heures d'extinction <span class="hint">(écran éteint dans cette plage ; laisser vide pour désactiver)</span></legend>
+        <div class="row">
+          <div>
+            <label for="off_start">Éteindre à</label>
+            <input id="off_start" name="off_start" type="time" value="{config.get('off_start', '')}">
+          </div>
+          <div>
+            <label for="off_end">Rallumer à</label>
+            <input id="off_end" name="off_end" type="time" value="{config.get('off_end', '')}">
+          </div>
+        </div>
+      </fieldset>
 
       <button type="submit">Sauvegarder</button>
     </form>

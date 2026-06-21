@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from .providers.registry import NETWORK_NAMES
+from .providers.registry import MODES, NETWORK_NAMES, active_networks as _active_networks
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -24,6 +24,8 @@ CONFIG_PATH = Path(
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "network": "avelo",
+    "mode": "velo_communauto",
+    "rotate_seconds": 10,
     "favorite_stations": ["81", "85", "141"],
     "communauto": {
         "city_id": 59,
@@ -34,6 +36,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "refresh_seconds": 60,
     "brightness": 80,
+    "off_start": "",
+    "off_end": "",
 }
 
 
@@ -53,11 +57,23 @@ def load_config() -> dict[str, Any]:
             f"Unknown network {network!r} in {CONFIG_PATH}. "
             f"Choose one of: {', '.join(NETWORK_NAMES)}"
         )
+    mode = str(merged.get("mode", "velo_communauto")).lower()
+    if mode not in MODES:
+        raise ValueError(
+            f"Unknown mode {mode!r} in {CONFIG_PATH}. Choose one of: {', '.join(MODES)}"
+        )
     merged["network"] = network
+    merged["mode"] = mode
+    merged["rotate_seconds"] = max(2, int(merged.get("rotate_seconds", 10)))
     merged["favorite_stations"] = [str(s) for s in merged.get("favorite_stations", [])]
     merged["refresh_seconds"] = max(10, int(merged["refresh_seconds"]))
     merged["brightness"] = max(0, min(100, int(merged["brightness"])))
     return merged
+
+
+def active_networks(config: dict[str, Any]) -> list[str]:
+    """Ordered list of networks the configured mode cycles through."""
+    return _active_networks(config["mode"], config["network"])
 
 
 def save_config(config: dict[str, Any]) -> None:

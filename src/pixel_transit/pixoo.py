@@ -114,6 +114,18 @@ def set_brightness(ip: str, brightness: int) -> dict[str, Any]:
     )
 
 
+def set_screen(ip: str, on: bool, **kwargs: Any) -> dict[str, Any]:
+    """Turn the Pixoo panel on or off (Channel/OnOffScreen)."""
+    return _post_command(
+        ip,
+        {
+            "Command": "Channel/OnOffScreen",
+            "OnOff": 1 if on else 0,
+        },
+        **kwargs,
+    )
+
+
 def _next_pic_id(
     ip: str,
     *,

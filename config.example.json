@@ -1,5 +1,7 @@
 {
   "network": "avelo",
+  "mode": "velo_communauto",
+  "rotate_seconds": 10,
   "favorite_stations": [
     "81",
     "85",
@@ -19,5 +21,7 @@
     "max_rows": 3
   },
   "refresh_seconds": 60,
-  "brightness": 80
+  "brightness": 80,
+  "off_start": "21:00",
+  "off_end": "08:00"
 }
