@@ -181,6 +181,29 @@ Commandes : joystick haut/bas pour naviguer, **OK** (clic joystick) pour valider
 défaut du HAT dans [st7789.py](src/pixel_transit/lcd/st7789.py) et
 [buttons.py](src/pixel_transit/lcd/buttons.py).
 
+## Sécurité
+
+- **Mot de passe Wi‑Fi** : l'application ne le manipule **jamais**. [wifi.py](src/pixel_transit/wifi.py)
+  lit uniquement le *nom* du réseau (SSID) pour l'afficher ; aucun mot de passe n'est
+  lu, stocké ni journalisé. Le SSID (nom seulement) apparaît dans `status.json`.
+- **Stockage du mot de passe (niveau OS)** : c'est Raspberry Pi OS qui le garde, **en
+  clair sur la carte SD**, lisible par `root` seulement
+  (`/etc/NetworkManager/system-connections/*.nmconnection`, ou
+  `/etc/wpa_supplicant/wpa_supplicant.conf` sur les versions plus anciennes). Le Pi n'a
+  pas de puce sécurisée : **quiconque a la carte SD peut lire le mot de passe.** Une
+  image `.img` de sauvegarde le contient aussi.
+- **SSH** : si activé, change le mot de passe par défaut (`pi`/`raspberry`) ou utilise
+  des clés. Un accès SSH root permet de lire le `psk` — c'est souvent le vrai maillon
+  faible, avant le vol de carte.
+- **Serveur de setup** : `--setup` écoute sur `0.0.0.0:8080` **sans authentification**.
+  Il n'expose pas le mot de passe Wi‑Fi, mais permet de changer la config depuis le LAN.
+  Ne le lance que ponctuellement, puis arrête‑le (ne pas laisser tourner en permanence).
+- **Réseau dédié** : place le Pi sur un SSID/VLAN invité ou IoT séparé pour limiter
+  l'impact en cas de compromission.
+
+Pour un usage maison (pas d'accès physique, SSH désactivé ou protégé, setup lancé au
+besoin), le risque est faible.
+
 ## Tests
 
 ```bash
