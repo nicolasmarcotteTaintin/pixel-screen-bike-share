@@ -1,32 +1,41 @@
-from pixel_transit.lcd.menu import MENU_OPTIONS, SCREEN_SIZE, Menu
+from pixel_transit.lcd.menu import (
+    MODE_KEYS,
+    SCREEN_SIZE,
+    language_menu,
+    mode_menu,
+)
 
 
-def test_options_match_modes():
-    assert [key for key, _, _ in MENU_OPTIONS] == ["velo", "velo_communauto", "communauto"]
+def test_mode_keys_order():
+    menu = mode_menu("fr")
+    assert [key for key, _, _ in menu.options] == list(MODE_KEYS)
+
+
+def test_language_menu_options():
+    menu = language_menu()
+    assert [key for key, _, _ in menu.options] == ["fr", "en"]
+
+
+def test_mode_menu_is_localized():
+    assert mode_menu("fr").options[0][1] == "Vélo"
+    assert mode_menu("en").options[0][1] == "Bike"
+    # Unknown language falls back to French.
+    assert mode_menu("xx").title == mode_menu("fr").title
 
 
 def test_move_wraps():
-    menu = Menu()
-    assert menu.selected == 0
+    menu = mode_menu("fr")
     menu.move(-1)
-    assert menu.selected == len(MENU_OPTIONS) - 1
+    assert menu.selected == len(MODE_KEYS) - 1
     menu.move(1)
     assert menu.selected == 0
 
 
 def test_active_key_sets_initial_selection():
-    menu = Menu(active_key="communauto")
-    assert menu.current_key == "communauto"
+    assert mode_menu("fr", active_key="communauto").current_key == "communauto"
+    assert language_menu(active_key="en").current_key == "en"
 
 
-def test_select_index_and_current_key():
-    menu = Menu()
-    menu.select_index(1)
-    assert menu.current_key == "velo_communauto"
-    menu.select_index(99)  # out of range -> ignored
-    assert menu.current_key == "velo_communauto"
-
-
-def test_render_size():
-    image = Menu(active_key="velo").render()
-    assert image.size == (SCREEN_SIZE, SCREEN_SIZE)
+def test_render_sizes():
+    assert mode_menu("en", active_key="velo").render().size == (SCREEN_SIZE, SCREEN_SIZE)
+    assert language_menu(active_key="fr").render(confirmed=True).size == (SCREEN_SIZE, SCREEN_SIZE)

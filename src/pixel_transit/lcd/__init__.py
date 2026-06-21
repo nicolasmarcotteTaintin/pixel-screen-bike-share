@@ -1,4 +1,4 @@
-"""1.3" 240x240 IPS LCD (ST7789) mode-selection menu.
+"""1.3" 240x240 IPS LCD (ST7789) language + mode selection menus.
 
 Prepared but not yet integrated into the display daemon. Pure menu logic lives in
 :mod:`pixel_transit.lcd.menu`; hardware glue in :mod:`pixel_transit.lcd.st7789`,
@@ -7,6 +7,6 @@ Prepared but not yet integrated into the display daemon. Pure menu logic lives i
 
 from __future__ import annotations
 
-from .menu import MENU_OPTIONS, Menu
+from .menu import LANGUAGES, MODE_KEYS, ListMenu, language_menu, mode_menu
 
-__all__ = ["Menu", "MENU_OPTIONS"]
+__all__ = ["ListMenu", "language_menu", "mode_menu", "MODE_KEYS", "LANGUAGES"]

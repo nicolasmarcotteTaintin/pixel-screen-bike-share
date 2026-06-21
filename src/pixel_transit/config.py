@@ -25,6 +25,7 @@ CONFIG_PATH = Path(
 DEFAULT_CONFIG: dict[str, Any] = {
     "network": "avelo",
     "mode": "velo_communauto",
+    "language": "fr",
     "rotate_seconds": 10,
     "favorite_stations": ["81", "85", "141"],
     "communauto": {
@@ -62,8 +63,10 @@ def load_config() -> dict[str, Any]:
         raise ValueError(
             f"Unknown mode {mode!r} in {CONFIG_PATH}. Choose one of: {', '.join(MODES)}"
         )
+    language = str(merged.get("language", "fr")).lower()
     merged["network"] = network
     merged["mode"] = mode
+    merged["language"] = language if language in ("fr", "en") else "fr"
     merged["rotate_seconds"] = max(2, int(merged.get("rotate_seconds", 10)))
     merged["favorite_stations"] = [str(s) for s in merged.get("favorite_stations", [])]
     merged["refresh_seconds"] = max(10, int(merged["refresh_seconds"]))
