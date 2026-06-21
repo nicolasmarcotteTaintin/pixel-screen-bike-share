@@ -47,6 +47,35 @@ MODE_STRINGS = {
     },
 }
 
+# Localized strings for the main menu and the brightness screen.
+MAIN_STRINGS = {
+    "fr": {
+        "title": "Réglages",
+        "footer": "Joystick: choisir · ouvrir",
+        "options": [
+            ("mode", "Mode d'affichage", ""),
+            ("brightness", "Luminosité", ""),
+            ("language", "Langue", ""),
+        ],
+    },
+    "en": {
+        "title": "Settings",
+        "footer": "Joystick: choose · open",
+        "options": [
+            ("mode", "Display mode", ""),
+            ("brightness", "Brightness", ""),
+            ("language", "Language", ""),
+        ],
+    },
+}
+
+BRIGHTNESS_STRINGS = {
+    "fr": {"title": "Luminosité", "footer": "Joystick ←/→ · valider", "confirmed": "Validé ✓"},
+    "en": {"title": "Brightness", "footer": "Joystick ←/→ · select", "confirmed": "Saved ✓"},
+}
+
+BRIGHTNESS_STEP = 5
+
 # Palette (RGB).
 BG = (16, 18, 22)
 TITLE = (245, 245, 245)
@@ -177,3 +206,58 @@ def mode_menu(lang: str = "fr", active_key: str | None = None) -> ListMenu:
         confirmed_footer=strings["confirmed"],
         active_key=active_key,
     )
+
+
+def main_menu(lang: str = "fr", selected: int = 0) -> ListMenu:
+    strings = MAIN_STRINGS.get(lang, MAIN_STRINGS["fr"])
+    return ListMenu(
+        title=strings["title"],
+        options=list(strings["options"]),
+        footer=strings["footer"],
+        selected=selected,
+    )
+
+
+@dataclass
+class BrightnessScreen:
+    """A 0-100 brightness adjuster (joystick left/right) with a level bar."""
+
+    value: int
+    lang: str = "fr"
+    step: int = BRIGHTNESS_STEP
+
+    def __post_init__(self) -> None:
+        self.value = _clamp(self.value)
+
+    def adjust(self, delta: int) -> None:
+        self.value = _clamp(self.value + delta * self.step)
+
+    def render(self, confirmed: bool = False) -> Image.Image:
+        strings = BRIGHTNESS_STRINGS.get(self.lang, BRIGHTNESS_STRINGS["fr"])
+        image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
+        draw = ImageDraw.Draw(image)
+
+        draw.text((16, 12), strings["title"], font=_load_font(24), fill=TITLE)
+        draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
+
+        # Big percentage, centred.
+        big = _load_font(64)
+        text = f"{self.value}%"
+        width = draw.textlength(text, font=big)
+        draw.text(((SCREEN_SIZE - width) // 2, 70), text, font=big, fill=TITLE)
+
+        # Level bar.
+        x0, x1, y0, y1 = 24, SCREEN_SIZE - 24, 162, 184
+        draw.rounded_rectangle((x0, y0, x1, y1), radius=8, fill=ROW_BG)
+        fill_w = int((x1 - x0 - 4) * self.value / 100)
+        if fill_w > 0:
+            draw.rounded_rectangle((x0 + 2, y0 + 2, x0 + 2 + fill_w, y1 - 2), radius=6, fill=ACCENT)
+
+        footer = strings["confirmed"] if confirmed else strings["footer"]
+        draw.text((16, SCREEN_SIZE - 22), footer, font=_load_font(13),
+                  fill=ACCENT if confirmed else TEXT_DIM)
+        return image
+
+
+def _clamp(value: int) -> int:
+    return max(0, min(100, int(value)))

@@ -7,6 +7,22 @@ Prepared but not yet integrated into the display daemon. Pure menu logic lives i
 
 from __future__ import annotations
 
-from .menu import LANGUAGES, MODE_KEYS, ListMenu, language_menu, mode_menu
+from .menu import (
+    LANGUAGES,
+    MODE_KEYS,
+    BrightnessScreen,
+    ListMenu,
+    language_menu,
+    main_menu,
+    mode_menu,
+)
 
-__all__ = ["ListMenu", "language_menu", "mode_menu", "MODE_KEYS", "LANGUAGES"]
+__all__ = [
+    "ListMenu",
+    "BrightnessScreen",
+    "language_menu",
+    "mode_menu",
+    "main_menu",
+    "MODE_KEYS",
+    "LANGUAGES",
+]

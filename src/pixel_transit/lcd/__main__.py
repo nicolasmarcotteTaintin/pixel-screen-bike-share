@@ -15,24 +15,30 @@ from pathlib import Path
 def main() -> int:
     parser = argparse.ArgumentParser(description="LCD language + mode menus (1.3\" ST7789 240x240).")
     parser.add_argument("--preview", type=Path, help="Render a menu to a PNG and exit (no hardware).")
-    parser.add_argument("--screen", choices=("language", "mode"), default="mode",
-                        help="Which screen to preview (default: mode).")
-    parser.add_argument("--lang", default="fr", help="Language for the mode preview (fr/en).")
-    parser.add_argument("--selected", type=int, default=0, help="Highlighted row for the preview.")
+    parser.add_argument("--screen", choices=("language", "main", "mode", "brightness"), default="main",
+                        help="Which screen to preview (default: main).")
+    parser.add_argument("--lang", default="fr", help="Language for the preview (fr/en).")
+    parser.add_argument("--selected", type=int, default=0, help="Highlighted row for list screens.")
     parser.add_argument("--active", type=str, default=None, help="Active key marked in the preview.")
+    parser.add_argument("--value", type=int, default=80, help="Value for the brightness preview.")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     if args.preview:
-        from .menu import language_menu, mode_menu
+        from .menu import BrightnessScreen, language_menu, main_menu, mode_menu
 
         if args.screen == "language":
-            menu = language_menu(active_key=args.active or args.lang)
+            screen = language_menu(active_key=args.active or args.lang)
+        elif args.screen == "main":
+            screen = main_menu(args.lang, selected=args.selected)
+        elif args.screen == "brightness":
+            screen = BrightnessScreen(args.value, lang=args.lang)
         else:
-            menu = mode_menu(args.lang, active_key=args.active)
-        menu.select_index(args.selected)
-        menu.render().save(args.preview)
+            screen = mode_menu(args.lang, active_key=args.active)
+        if hasattr(screen, "select_index"):
+            screen.select_index(args.selected)
+        screen.render().save(args.preview)
         print(f"Menu preview ({args.screen}) written to {args.preview}")
         return 0
 
