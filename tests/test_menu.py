@@ -30,12 +30,13 @@ def test_mode_menu_is_localized():
     assert mode_menu("xx").title == mode_menu("fr").title
 
 
-def test_move_wraps():
+def test_move_clamps_no_wrap():
     menu = mode_menu("fr")
-    menu.move(-1)
-    assert menu.selected == len(MODE_KEYS) - 1
-    menu.move(1)
+    menu.move(-1)                       # already at the top -> stays
     assert menu.selected == 0
+    for _ in range(len(MODE_KEYS) + 2):
+        menu.move(1)                    # past the end -> clamps at the last item
+    assert menu.selected == len(MODE_KEYS) - 1
 
 
 def test_active_key_sets_initial_selection():
@@ -52,6 +53,21 @@ def test_main_menu_options():
     labels = {key: label for key, label, _ in main_menu("fr").options}
     assert labels["brightness"] == "Luminosité écran"
     assert labels["lcd_brightness"] == "Luminosité Pi"
+
+
+def test_menu_edge_scrolling():
+    m = main_menu("fr")               # 8 options, window of 5
+    assert m._window() == (0, 5)
+    for _ in range(4):
+        m.move(1)                     # down to index 4 = last visible row
+    assert m.selected == 4 and m._window()[0] == 0   # window hasn't moved yet
+    m.move(1)                         # index 5 -> scroll down by one
+    assert m.selected == 5 and m._window()[0] == 1
+    m.move(1)
+    m.move(1)                         # index 7 (last) -> window at bottom
+    assert m.selected == 7 and m._window()[0] == 3
+    m.move(1)                         # already at the last item -> stays, no wrap
+    assert m.selected == 7 and m._window()[0] == 3
 
 
 def test_alternance_disabled_unless_alternating_mode():

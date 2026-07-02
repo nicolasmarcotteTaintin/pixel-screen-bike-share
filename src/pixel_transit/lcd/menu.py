@@ -212,18 +212,23 @@ class ListMenu:
     max_visible: int = 5  # rows shown at once; longer lists scroll (scrollbar on the right)
 
     def __post_init__(self) -> None:
+        self._top = 0  # index of the first visible row (scroll position)
         if self.active_key is not None:
             for index, (key, _, _) in enumerate(self.options):
                 if key == self.active_key:
                     self.selected = index
                     break
+        self._reveal()
 
     def move(self, delta: int) -> None:
-        self.selected = (self.selected + delta) % len(self.options)
+        # Clamp at the ends — the list does not wrap around.
+        self.selected = max(0, min(len(self.options) - 1, self.selected + delta))
+        self._reveal()
 
     def select_index(self, index: int) -> None:
         if 0 <= index < len(self.options):
             self.selected = index
+            self._reveal()
 
     @property
     def current_key(self) -> str:
@@ -232,14 +237,22 @@ class ListMenu:
     def is_disabled(self, key: str) -> bool:
         return key in self.disabled_keys
 
+    def _visible(self) -> int:
+        return min(len(self.options), self.max_visible)
+
+    def _reveal(self) -> None:
+        """Scroll only when the selection leaves the visible window (edge-triggered)."""
+        visible = self._visible()
+        max_top = max(0, len(self.options) - visible)
+        if self.selected < self._top:
+            self._top = self.selected
+        elif self.selected >= self._top + visible:
+            self._top = self.selected - visible + 1
+        self._top = max(0, min(self._top, max_top))
+
     def _window(self) -> tuple[int, int]:
-        """(start, count) of the visible slice, kept centred on the selection."""
-        count = len(self.options)
-        visible = min(count, self.max_visible)
-        if count <= visible:
-            return 0, visible
-        start = min(max(0, self.selected - visible // 2), count - visible)
-        return start, visible
+        """(start, count) of the visible slice; scroll position tracked in ``_top``."""
+        return self._top, self._visible()
 
     def render(self, confirmed: bool = False) -> Image.Image:
         image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
