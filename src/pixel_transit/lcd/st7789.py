@@ -47,7 +47,16 @@ class ST7789:
         GPIO.setwarnings(False)
         for pin in (rst, dc, bl):
             GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(bl, GPIO.HIGH)  # backlight on
+
+        # Backlight via PWM so the level is adjustable ("Luminosité Pi").
+        # Fall back to plain on/off if the GPIO backend has no PWM.
+        self._bl_level = 100
+        try:
+            self._bl_pwm = GPIO.PWM(bl, 1000)
+            self._bl_pwm.start(100)
+        except Exception:
+            self._bl_pwm = None
+            GPIO.output(bl, GPIO.HIGH)  # backlight on
 
         self._spi = spidev.SpiDev()
         self._spi.open(spi_bus, spi_device)
@@ -118,13 +127,26 @@ class ST7789:
         self._set_window(0, 0, WIDTH - 1, HEIGHT - 1)
         self._data_bytes(_to_rgb565(frame))
 
+    def set_brightness(self, percent: int) -> None:
+        """Set the LCD backlight level (0-100%) and turn it on."""
+        self._bl_level = max(0, min(100, int(percent)))
+        self._apply_backlight(self._bl_level)
+
     def set_backlight(self, on: bool) -> None:
-        self._gpio.output(self._bl, self._gpio.HIGH if on else self._gpio.LOW)
+        self._apply_backlight(self._bl_level if on else 0)
+
+    def _apply_backlight(self, duty: int) -> None:
+        if self._bl_pwm is not None:
+            self._bl_pwm.ChangeDutyCycle(duty)
+        else:
+            self._gpio.output(self._bl, self._gpio.HIGH if duty > 0 else self._gpio.LOW)
 
     def close(self) -> None:
         try:
             self._command(0x28)  # display off
             self.set_backlight(False)
+            if self._bl_pwm is not None:
+                self._bl_pwm.stop()
         finally:
             try:
                 self._spi.close()

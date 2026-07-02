@@ -1,11 +1,14 @@
 from pixel_transit.lcd.menu import (
     MODE_KEYS,
+    ROTATE_OPTIONS,
     SCREEN_SIZE,
     BrightnessScreen,
+    info_screen,
     language_menu,
     main_menu,
     minutes_to_hhmm,
     mode_menu,
+    rotate_menu,
     sleep_screen,
 )
 
@@ -40,10 +43,30 @@ def test_active_key_sets_initial_selection():
     assert language_menu(active_key="en").current_key == "en"
 
 
-def test_main_menu_has_brightness_and_sleep():
+def test_main_menu_options():
     keys = [key for key, _, _ in main_menu("fr").options]
-    assert keys == ["mode", "brightness", "sleep", "language"]
-    assert main_menu("en").options[1][1] == "Brightness"
+    assert keys == ["mode", "rotate", "brightness", "lcd_brightness",
+                    "sleep", "language", "info", "exit"]
+    labels = {key: label for key, label, _ in main_menu("fr").options}
+    assert labels["brightness"] == "Luminosité écran"
+    assert labels["lcd_brightness"] == "Luminosité Pi"
+
+
+def test_alternance_disabled_unless_alternating_mode():
+    assert main_menu("fr").is_disabled("rotate")
+    assert main_menu("fr", mode="velo").is_disabled("rotate")
+    assert not main_menu("fr", mode="velo_communauto").is_disabled("rotate")
+
+
+def test_rotate_menu_keys_and_active():
+    menu = rotate_menu("fr", active_seconds=20)
+    assert [int(key) for key, _, _ in menu.options] == list(ROTATE_OPTIONS)
+    assert menu.current_key == "20"
+
+
+def test_info_screen_renders():
+    screen = info_screen("fr", {"host": "pi", "ip": "10.0.0.2"})
+    assert screen.render().size == (SCREEN_SIZE, SCREEN_SIZE)
 
 
 def test_sleep_screen_toggle_and_time_steps():

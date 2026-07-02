@@ -54,9 +54,13 @@ MAIN_STRINGS = {
         "footer": "Joystick: choisir · ouvrir",
         "options": [
             ("mode", "Mode d'affichage", ""),
-            ("brightness", "Luminosité", ""),
+            ("rotate", "Alternance", ""),
+            ("brightness", "Luminosité écran", ""),
+            ("lcd_brightness", "Luminosité Pi", ""),
             ("sleep", "Veille du soir", ""),
             ("language", "Langue", ""),
+            ("info", "Information", ""),
+            ("exit", "Éteindre l'écran", ""),
         ],
     },
     "en": {
@@ -64,9 +68,62 @@ MAIN_STRINGS = {
         "footer": "Joystick: choose · open",
         "options": [
             ("mode", "Display mode", ""),
+            ("rotate", "Alternation", ""),
             ("brightness", "Brightness", ""),
             ("sleep", "Evening off", ""),
             ("language", "Language", ""),
+            ("info", "Information", ""),
+            ("exit", "Turn off screen", ""),
+        ],
+    },
+}
+
+# Rotation (alternate mode) interval choices, in seconds.
+ROTATE_OPTIONS = (5, 10, 15, 20, 30, 60)
+
+ROTATE_STRINGS = {
+    "fr": {
+        "title": "Alternance",
+        "footer": "Joystick: choisir · valider",
+        "confirmed": "Validé ✓",
+        "unit": "s",
+        "disabled_hint": "Mode Vélo + Communauto requis",
+    },
+    "en": {
+        "title": "Alternation",
+        "footer": "Joystick: choose · select",
+        "confirmed": "Saved ✓",
+        "unit": "s",
+        "disabled_hint": "Needs Bike + Communauto mode",
+    },
+}
+
+# Information screen: ordered (value-key, localized label) rows.
+INFO_STRINGS = {
+    "fr": {
+        "title": "Information",
+        "footer": "Un bouton: retour",
+        "rows": [
+            ("host", "Appareil"),
+            ("ip", "Adresse IP"),
+            ("ssid", "Wi-Fi"),
+            ("mode", "Mode"),
+            ("network", "Réseau vélo"),
+            ("pixoo", "Pixoo"),
+            ("brightness", "Luminosité"),
+        ],
+    },
+    "en": {
+        "title": "Information",
+        "footer": "Any button: back",
+        "rows": [
+            ("host", "Device"),
+            ("ip", "IP address"),
+            ("ssid", "Wi-Fi"),
+            ("mode", "Mode"),
+            ("network", "Bike network"),
+            ("pixoo", "Pixoo"),
+            ("brightness", "Brightness"),
         ],
     },
 }
@@ -93,6 +150,12 @@ TIME_STEP_MIN = 30
 BRIGHTNESS_STRINGS = {
     "fr": {"title": "Luminosité", "footer": "Joystick ←/→ · valider", "confirmed": "Validé ✓"},
     "en": {"title": "Brightness", "footer": "Joystick ←/→ · select", "confirmed": "Saved ✓"},
+}
+
+# Titles for the two brightness targets: the Pixoo LED panel vs the Pi's LCD HAT.
+BRIGHTNESS_TITLES = {
+    "screen": {"fr": "Luminosité écran", "en": "Screen brightness"},
+    "pi": {"fr": "Luminosité Pi", "en": "Pi brightness"},
 }
 
 BRIGHTNESS_STEP = 5
@@ -142,6 +205,8 @@ class ListMenu:
     confirmed_footer: str = "✓"
     selected: int = 0
     active_key: str | None = None
+    disabled_keys: frozenset = frozenset()  # keys rendered greyed-out (still selectable)
+    max_visible: int = 6  # rows shown at once; longer lists scroll
 
     def __post_init__(self) -> None:
         if self.active_key is not None:
@@ -161,45 +226,72 @@ class ListMenu:
     def current_key(self) -> str:
         return self.options[self.selected][0]
 
+    def is_disabled(self, key: str) -> bool:
+        return key in self.disabled_keys
+
+    def _window(self) -> tuple[int, int]:
+        """(start, count) of the visible slice, kept centred on the selection."""
+        count = len(self.options)
+        visible = min(count, self.max_visible)
+        if count <= visible:
+            return 0, visible
+        start = min(max(0, self.selected - visible // 2), count - visible)
+        return start, visible
+
     def render(self, confirmed: bool = False) -> Image.Image:
         image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
         draw = ImageDraw.Draw(image)
 
-        title_font = _load_font(24)
-        sub_font = _load_font(13)
-
-        draw.text((16, 12), self.title, font=title_font, fill=TITLE)
+        sub_font = _load_font(12)
+        draw.text((16, 12), self.title, font=_load_font(24), fill=TITLE)
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
-        label_x = 46
-        dot_margin = 26  # space reserved at the right for the active marker
-        avail = (SCREEN_SIZE - 12) - label_x - dot_margin
-        label_font = _fit_font(draw, [label for _, label, _ in self.options], avail, 22, 14)
-
+        start, visible = self._window()
         count = len(self.options)
-        gap = 8
-        # Fit the rows in the area below the title; taller rows when fewer options.
-        area_top, area_bottom = 52, SCREEN_SIZE - 28
-        row_height = min(64, (area_bottom - area_top - gap * (count - 1)) // count)
-        for index, (key, label, sublabel) in enumerate(self.options):
-            y = area_top + index * (row_height + gap)
+        gap = 8 if visible <= 5 else 6
+        area_top, area_bottom = 50, SCREEN_SIZE - 26
+        row_height = min(60, (area_bottom - area_top - gap * (visible - 1)) // visible)
+
+        label_x = 46
+        right_margin = 26  # reserved for the active marker / scroll arrows
+        avail = (SCREEN_SIZE - 12) - label_x - right_margin
+        max_label = 22 if visible <= 5 else max(13, min(20, row_height - 4))
+        label_font = _fit_font(draw, [label for _, label, _ in self.options], avail, max_label, 12)
+        label_h = draw.textbbox((0, 0), "Ag", font=label_font)[3]
+
+        for slot in range(visible):
+            index = start + slot
+            key, label, sublabel = self.options[index]
+            y = area_top + slot * (row_height + gap)
+            disabled = self.is_disabled(key)
             is_selected = index == self.selected
-            draw.rounded_rectangle(
-                (12, y, SCREEN_SIZE - 12, y + row_height),
-                radius=10,
-                fill=ROW_BG_SELECTED if is_selected else ROW_BG,
-            )
-            label_y = y + (8 if sublabel else (row_height - 22) // 2)
-            draw.text((22, label_y), str(index + 1), font=label_font,
-                      fill=TITLE if is_selected else TEXT_DIM)
-            draw.text((label_x, label_y), label, font=label_font,
-                      fill=TITLE if is_selected else TEXT)
-            if sublabel:
+            has_sub = bool(sublabel) and row_height >= 40
+
+            if disabled:
+                fill = (40, 43, 50) if is_selected else ROW_BG
+                num_color, text_color = (82, 88, 98), (120, 126, 138)
+            elif is_selected:
+                fill, num_color, text_color = ROW_BG_SELECTED, TITLE, TITLE
+            else:
+                fill, num_color, text_color = ROW_BG, TEXT_DIM, TEXT
+
+            draw.rounded_rectangle((12, y, SCREEN_SIZE - 12, y + row_height), radius=10, fill=fill)
+            label_y = y + 8 if has_sub else y + max(2, (row_height - label_h) // 2)
+            draw.text((22, label_y), str(index + 1), font=label_font, fill=num_color)
+            draw.text((label_x, label_y), label, font=label_font, fill=text_color)
+            if has_sub:
                 draw.text((label_x, y + row_height - 20), sublabel, font=sub_font,
                           fill=(220, 240, 225) if is_selected else TEXT_DIM)
-            if key == self.active_key:
+            if key == self.active_key and not disabled:
                 cy = y + row_height // 2
                 draw.ellipse((SCREEN_SIZE - 30, cy - 6, SCREEN_SIZE - 18, cy + 6), fill=ACCENT)
+
+        # Scroll hints when the list overflows the window.
+        if start > 0:
+            draw.polygon([(SCREEN_SIZE - 22, 49), (SCREEN_SIZE - 14, 49), (SCREEN_SIZE - 18, 44)], fill=TEXT_DIM)
+        if start + visible < count:
+            yb = SCREEN_SIZE - 31
+            draw.polygon([(SCREEN_SIZE - 22, yb), (SCREEN_SIZE - 14, yb), (SCREEN_SIZE - 18, yb + 5)], fill=TEXT_DIM)
 
         footer = self.confirmed_footer if confirmed else self.footer
         if footer:
@@ -229,13 +321,28 @@ def mode_menu(lang: str = "fr", active_key: str | None = None) -> ListMenu:
     )
 
 
-def main_menu(lang: str = "fr", selected: int = 0) -> ListMenu:
+def main_menu(lang: str = "fr", selected: int = 0, mode: str | None = None) -> ListMenu:
     strings = MAIN_STRINGS.get(lang, MAIN_STRINGS["fr"])
+    # "Alternance" only makes sense in the alternating mode; grey it out otherwise.
+    disabled = frozenset() if mode == "velo_communauto" else frozenset({"rotate"})
     return ListMenu(
         title=strings["title"],
         options=list(strings["options"]),
         footer=strings["footer"],
         selected=selected,
+        disabled_keys=disabled,
+    )
+
+
+def rotate_menu(lang: str = "fr", active_seconds: int = 10) -> ListMenu:
+    strings = ROTATE_STRINGS.get(lang, ROTATE_STRINGS["fr"])
+    options = [(str(seconds), f"{seconds} {strings['unit']}", "") for seconds in ROTATE_OPTIONS]
+    return ListMenu(
+        title=strings["title"],
+        options=options,
+        footer=strings["footer"],
+        confirmed_footer=strings["confirmed"],
+        active_key=str(active_seconds),
     )
 
 
@@ -246,6 +353,7 @@ class BrightnessScreen:
     value: int
     lang: str = "fr"
     step: int = BRIGHTNESS_STEP
+    title: str | None = None
 
     def __post_init__(self) -> None:
         self.value = _clamp(self.value)
@@ -258,7 +366,7 @@ class BrightnessScreen:
         image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
         draw = ImageDraw.Draw(image)
 
-        draw.text((16, 12), strings["title"], font=_load_font(24), fill=TITLE)
+        draw.text((16, 12), self.title or strings["title"], font=_load_font(24), fill=TITLE)
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
         # Big percentage, centred.
@@ -365,3 +473,50 @@ def sleep_screen(lang: str, enabled: bool, off_start: str, off_end: str) -> Slee
         on_minutes=hhmm_to_minutes(off_end, 8 * 60),
         lang=lang,
     )
+
+
+def _clip_to_width(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -> str:
+    """Trim ``text`` (adding an ellipsis) until it fits ``max_width`` pixels."""
+    if draw.textlength(text, font=font) <= max_width:
+        return text
+    while text and draw.textlength(text + "…", font=font) > max_width:
+        text = text[:-1]
+    return text + "…"
+
+
+@dataclass
+class InfoScreen:
+    """A read-only list of label/value rows (device information)."""
+
+    title: str
+    rows: list[tuple[str, str]]  # (label, value)
+    footer: str = ""
+
+    def render(self, confirmed: bool = False) -> Image.Image:
+        image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
+        draw = ImageDraw.Draw(image)
+
+        draw.text((16, 12), self.title, font=_load_font(24), fill=TITLE)
+        draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
+
+        label_font = _load_font(14)
+        value_font = _load_font(15)
+        top, bottom = 52, SCREEN_SIZE - 26
+        count = max(1, len(self.rows))
+        row_height = (bottom - top) // count
+        value_x = 122
+        for index, (label, value) in enumerate(self.rows):
+            y = top + index * row_height
+            draw.text((16, y), label, font=label_font, fill=TEXT_DIM)
+            shown = _clip_to_width(draw, str(value), value_font, SCREEN_SIZE - 14 - value_x)
+            draw.text((value_x, y), shown, font=value_font, fill=TEXT)
+
+        if self.footer:
+            draw.text((16, SCREEN_SIZE - 22), self.footer, font=_load_font(12), fill=TEXT_DIM)
+        return image
+
+
+def info_screen(lang: str, values: dict) -> InfoScreen:
+    strings = INFO_STRINGS.get(lang, INFO_STRINGS["fr"])
+    rows = [(label, str(values.get(key, "—"))) for key, label in strings["rows"]]
+    return InfoScreen(title=strings["title"], rows=rows, footer=strings["footer"])

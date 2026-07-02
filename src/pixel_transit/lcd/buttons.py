@@ -40,5 +40,9 @@ class Buttons:
             self._was_pressed[name] = pressed
         return events
 
+    def pressed(self) -> set[str]:
+        """Return the names of buttons currently held down (level, not edge)."""
+        return {name for name, pin in PINS.items() if self._gpio.input(pin) == 0}
+
     def cleanup(self) -> None:
         self._gpio.cleanup(list(PINS.values()))
