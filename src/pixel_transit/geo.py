@@ -28,10 +28,5 @@ def bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> str:
 
 
 def format_distance(metres: float) -> str:
-    """Compact distance label that fits the narrow display: ``"350M"`` or ``"1.2KM"``."""
-    if metres < 1000:
-        return f"{int(round(metres))}M"
-    km = metres / 1000.0
-    if km < 10:
-        return f"{km:.1f}KM"
-    return f"{int(round(km))}KM"
+    """Distance as decimal kilometres for the narrow display, e.g. ``"0.4KM"`` or ``"1.2KM"``."""
+    return f"{metres / 1000.0:.1f}KM"

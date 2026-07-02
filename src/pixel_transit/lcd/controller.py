@@ -35,7 +35,7 @@ import socket
 import time
 
 from ..config import load_config, save_config
-from ..sun import montreal_sunset_minutes
+from ..sun import montreal_sunrise_minutes, montreal_sunset_minutes
 from ..wifi import get_wifi_ssid
 from .menu import (
     BRIGHTNESS_TITLES,
@@ -237,6 +237,7 @@ def _confirm(state, screen, display):
                 off_start=config.get("off_start", "21:00"),
                 off_end=config.get("off_end", "08:00"),
                 sunset_label=_sunset_label(),
+                sunrise_label=_sunrise_label(),
             )
         if choice == "info":
             return "info", info_screen(lang, _gather_info(config))
@@ -269,7 +270,7 @@ def _confirm(state, screen, display):
         config = load_config()
         config["off_enabled"] = screen.enabled
         config["off_start"] = "sunset" if screen.sunset else minutes_to_hhmm(screen.off_minutes)
-        config["off_end"] = minutes_to_hhmm(screen.on_minutes)
+        config["off_end"] = "sunrise" if screen.sunset else minutes_to_hhmm(screen.on_minutes)
         save_config(config)
         logging.info("LCD menu: evening-off enabled=%s %s-%s",
                      screen.enabled, config["off_start"], config["off_end"])
@@ -306,6 +307,12 @@ def _rotate_hint(lang: str) -> str:
 def _sunset_label() -> str:
     """Approximate today's Montréal sunset, e.g. ``"≈20:15"`` (for the sleep screen)."""
     minutes = montreal_sunset_minutes()
+    return "≈" + minutes_to_hhmm(minutes) if minutes is not None else "—"
+
+
+def _sunrise_label() -> str:
+    """Approximate today's Montréal sunrise, e.g. ``"≈05:12"`` (for the sleep screen)."""
+    minutes = montreal_sunrise_minutes()
     return "≈" + minutes_to_hhmm(minutes) if minutes is not None else "—"
 
 

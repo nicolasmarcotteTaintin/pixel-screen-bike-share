@@ -48,6 +48,18 @@ def test_sunset_window(monkeypatch):
     assert is_off_now(config, _at(9)) is False
 
 
+def test_sunset_to_sunrise_window(monkeypatch):
+    import pixel_transit.schedule as sched
+
+    monkeypatch.setattr(sched, "montreal_sunset_minutes", lambda now: 20 * 60)  # 20:00
+    monkeypatch.setattr(sched, "montreal_sunrise_minutes", lambda now: 5 * 60)  # 05:00
+    config = {"off_start": "sunset", "off_end": "sunrise"}
+    assert is_off_now(config, _at(22)) is True    # night
+    assert is_off_now(config, _at(4)) is True     # before sunrise
+    assert is_off_now(config, _at(6)) is False    # after sunrise
+    assert is_off_now(config, _at(12)) is False   # midday
+
+
 def test_sunset_module_plausible():
     import time
 

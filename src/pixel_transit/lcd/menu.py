@@ -476,6 +476,7 @@ class SleepScreen:
     field: int = 0  # 0 = state, 1 = trigger, 2 = off time, 3 = on time
     sunset: bool = False
     sunset_label: str = ""
+    sunrise_label: str = ""
 
     def move(self, delta: int) -> None:
         self.field = (self.field + delta) % 4
@@ -486,10 +487,11 @@ class SleepScreen:
         elif self.field == 1:
             self.sunset = not self.sunset
         elif self.field == 2:
-            if not self.sunset:  # off time is fixed only when not following sunset
+            if not self.sunset:  # times are fixed only when not following the sun
                 self.off_minutes = (self.off_minutes + delta * TIME_STEP_MIN) % (24 * 60)
-        else:
-            self.on_minutes = (self.on_minutes + delta * TIME_STEP_MIN) % (24 * 60)
+        elif self.field == 3:
+            if not self.sunset:
+                self.on_minutes = (self.on_minutes + delta * TIME_STEP_MIN) % (24 * 60)
 
     def render(self, confirmed: bool = False) -> Image.Image:
         strings = SLEEP_STRINGS.get(self.lang, SLEEP_STRINGS["fr"])
@@ -499,12 +501,17 @@ class SleepScreen:
         draw.text((16, 12), strings["title"], font=_load_font(24), fill=TITLE)
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
-        off_value = (self.sunset_label or strings["sunset"]) if self.sunset else minutes_to_hhmm(self.off_minutes)
+        if self.sunset:
+            off_value = self.sunset_label or strings["sunset"]
+            on_value = self.sunrise_label or "—"
+        else:
+            off_value = minutes_to_hhmm(self.off_minutes)
+            on_value = minutes_to_hhmm(self.on_minutes)
         rows = [
             (strings["enabled"], strings["on"] if self.enabled else strings["off"], False),
             (strings["trigger"], strings["sunset"] if self.sunset else strings["fixed"], False),
-            (strings["off_at"], off_value, self.sunset),  # dim the value when following sunset
-            (strings["on_at"], minutes_to_hhmm(self.on_minutes), False),
+            (strings["off_at"], off_value, self.sunset),  # dim the value when following the sun
+            (strings["on_at"], on_value, self.sunset),
         ]
         label_font = _load_font(16)
         value_font = _load_font(16)
@@ -534,7 +541,7 @@ class SleepScreen:
 
 
 def sleep_screen(lang: str, enabled: bool, off_start: str, off_end: str,
-                 sunset_label: str = "") -> SleepScreen:
+                 sunset_label: str = "", sunrise_label: str = "") -> SleepScreen:
     sunset = str(off_start).strip().lower() == "sunset"
     return SleepScreen(
         enabled=enabled,
@@ -543,6 +550,7 @@ def sleep_screen(lang: str, enabled: bool, off_start: str, off_end: str,
         lang=lang,
         sunset=sunset,
         sunset_label=sunset_label,
+        sunrise_label=sunrise_label,
     )
 
 
