@@ -35,6 +35,7 @@ import socket
 import time
 
 from ..config import load_config, save_config
+from ..sun import montreal_sunset_minutes
 from ..wifi import get_wifi_ssid
 from .menu import (
     BRIGHTNESS_TITLES,
@@ -45,7 +46,7 @@ from .menu import (
     main_menu,
     minutes_to_hhmm,
     mode_menu,
-    rotate_menu,
+    rotate_screen,
     sleep_screen,
 )
 
@@ -115,8 +116,8 @@ def run_menu() -> None:
                     break
                 event = "press" if raw == "key1" else raw  # first key = joystick click
 
-                if state in ("brightness", "lcd_brightness"):
-                    # Brightness: left/right only.
+                if state in ("brightness", "lcd_brightness", "rotate"):
+                    # Brightness / alternation: left/right only (hold to ramp).
                     if event == "left":
                         screen.adjust(-1)
                     elif event == "right":
@@ -138,7 +139,7 @@ def run_menu() -> None:
                         confirmed = True
                 elif state == "info":
                     confirmed = True  # read-only: any button returns to the menu
-                else:  # list screens (language, main, mode, rotate): up/down only
+                else:  # list screens (language, main, mode): up/down only
                     if event == "up":
                         screen.move(-1)
                     elif event == "down":
@@ -161,8 +162,8 @@ def run_menu() -> None:
 
             need_render = bool(events)  # only redraw when something changed (menus are static)
 
-            # Long-press: hold left/right on a brightness screen to ramp continuously.
-            if state in ("brightness", "lcd_brightness"):
+            # Long-press: hold left/right on a brightness/alternation screen to ramp.
+            if state in ("brightness", "lcd_brightness", "rotate"):
                 held = buttons.pressed()
                 direction = 1 if "right" in held else -1 if "left" in held else 0
                 now = time.monotonic()
@@ -222,7 +223,7 @@ def _confirm(state, screen, display):
             if config.get("mode") != "velo_communauto":
                 _flash_footer(display, _main_menu(), _rotate_hint(lang))
                 return "main", _main_menu()
-            return "rotate", rotate_menu(lang, config.get("rotate_seconds", 10))
+            return "rotate", rotate_screen(lang, config.get("rotate_seconds", 10))
         if choice == "brightness":
             return "brightness", BrightnessScreen(
                 config.get("brightness", 80), lang=lang, title=_brightness_title("screen", lang))
@@ -235,6 +236,7 @@ def _confirm(state, screen, display):
                 enabled=config.get("off_enabled", True),
                 off_start=config.get("off_start", "21:00"),
                 off_end=config.get("off_end", "08:00"),
+                sunset_label=_sunset_label(),
             )
         if choice == "info":
             return "info", info_screen(lang, _gather_info(config))
@@ -249,7 +251,7 @@ def _confirm(state, screen, display):
         return "main", _main_menu()
 
     if state == "rotate":
-        _save("rotate_seconds", int(screen.current_key))
+        _save("rotate_seconds", screen.value)
         _flash(display, screen)
         return "main", _main_menu()
 
@@ -266,7 +268,7 @@ def _confirm(state, screen, display):
     if state == "sleep":
         config = load_config()
         config["off_enabled"] = screen.enabled
-        config["off_start"] = minutes_to_hhmm(screen.off_minutes)
+        config["off_start"] = "sunset" if screen.sunset else minutes_to_hhmm(screen.off_minutes)
         config["off_end"] = minutes_to_hhmm(screen.on_minutes)
         save_config(config)
         logging.info("LCD menu: evening-off enabled=%s %s-%s",
@@ -299,6 +301,12 @@ def _brightness_title(kind: str, lang: str) -> str:
 
 def _rotate_hint(lang: str) -> str:
     return ROTATE_STRINGS.get(lang, ROTATE_STRINGS["fr"])["disabled_hint"]
+
+
+def _sunset_label() -> str:
+    """Approximate today's Montréal sunset, e.g. ``"≈20:15"`` (for the sleep screen)."""
+    minutes = montreal_sunset_minutes()
+    return "≈" + minutes_to_hhmm(minutes) if minutes is not None else "—"
 
 
 def _flash_footer(display, menu, message: str) -> None:

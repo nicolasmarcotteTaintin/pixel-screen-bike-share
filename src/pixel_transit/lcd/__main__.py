@@ -33,7 +33,7 @@ def main() -> int:
             language_menu,
             main_menu,
             mode_menu,
-            rotate_menu,
+            rotate_screen,
             sleep_screen,
         )
 
@@ -47,7 +47,7 @@ def main() -> int:
         elif args.screen == "sleep":
             screen = sleep_screen(args.lang, enabled=True, off_start="21:00", off_end="08:00")
         elif args.screen == "rotate":
-            screen = rotate_menu(args.lang, active_seconds=args.value)
+            screen = rotate_screen(args.lang, seconds=args.value)
         elif args.screen == "info":
             screen = info_screen(args.lang, {
                 "host": "bixi-pixoo", "ip": "192.168.50.156", "ssid": "MonReseau",

@@ -8,7 +8,7 @@ from pixel_transit.lcd.menu import (
     main_menu,
     minutes_to_hhmm,
     mode_menu,
-    rotate_menu,
+    rotate_screen,
     sleep_screen,
 )
 
@@ -47,6 +47,8 @@ def test_main_menu_options():
     keys = [key for key, _, _ in main_menu("fr").options]
     assert keys == ["mode", "rotate", "brightness", "lcd_brightness",
                     "sleep", "language", "info", "exit"]
+    # French and English must expose the exact same options (same keys, same order).
+    assert [k for k, _, _ in main_menu("en").options] == keys
     labels = {key: label for key, label, _ in main_menu("fr").options}
     assert labels["brightness"] == "Luminosité écran"
     assert labels["lcd_brightness"] == "Luminosité Pi"
@@ -58,10 +60,18 @@ def test_alternance_disabled_unless_alternating_mode():
     assert not main_menu("fr", mode="velo_communauto").is_disabled("rotate")
 
 
-def test_rotate_menu_keys_and_active():
-    menu = rotate_menu("fr", active_seconds=20)
-    assert [int(key) for key, _, _ in menu.options] == list(ROTATE_OPTIONS)
-    assert menu.current_key == "20"
+def test_rotate_screen_steps_and_clamps():
+    screen = rotate_screen("fr", 10)
+    assert screen.value == 10
+    screen.adjust(1)
+    assert screen.value == 15
+    for _ in range(10):
+        screen.adjust(-1)
+    assert screen.value == ROTATE_OPTIONS[0]   # clamped low
+    for _ in range(20):
+        screen.adjust(1)
+    assert screen.value == ROTATE_OPTIONS[-1]  # clamped high
+    assert rotate_screen("fr", 12).value in (10, 15)  # snaps to nearest option
 
 
 def test_info_screen_renders():
@@ -69,17 +79,26 @@ def test_info_screen_renders():
     assert screen.render().size == (SCREEN_SIZE, SCREEN_SIZE)
 
 
-def test_sleep_screen_toggle_and_time_steps():
-    screen = sleep_screen("fr", enabled=True, off_start="21:00", off_end="08:00")
-    assert screen.enabled is True
-    screen.adjust(1)              # field 0 = state -> toggles off
-    assert screen.enabled is False
-    screen.move(1)               # field 1 = off time
-    screen.adjust(1)             # +30 min
-    assert minutes_to_hhmm(screen.off_minutes) == "21:30"
-    screen.move(1)               # field 2 = on time
-    screen.adjust(-1)            # -30 min, wraps within day
-    assert minutes_to_hhmm(screen.on_minutes) == "07:30"
+def test_sleep_screen_fields_and_sunset():
+    s = sleep_screen("fr", enabled=True, off_start="21:00", off_end="08:00")
+    assert s.enabled is True and s.sunset is False
+    s.adjust(1)                       # field 0 = state -> off
+    assert s.enabled is False
+    s.field = 1; s.adjust(1)          # field 1 = trigger -> sunset
+    assert s.sunset is True
+    s.field = 2; before = s.off_minutes; s.adjust(1)   # off time ignored while sunset
+    assert s.off_minutes == before
+    s.field = 1; s.adjust(1)          # trigger -> fixed again
+    assert s.sunset is False
+    s.field = 2; s.adjust(1)          # off time +30
+    assert minutes_to_hhmm(s.off_minutes) == "21:30"
+    s.field = 3; s.adjust(-1)         # on time -30
+    assert minutes_to_hhmm(s.on_minutes) == "07:30"
+
+
+def test_sleep_screen_from_sunset_config():
+    s = sleep_screen("fr", enabled=True, off_start="sunset", off_end="08:00")
+    assert s.sunset is True
 
 
 def test_minutes_hhmm_roundtrip():

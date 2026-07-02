@@ -9,6 +9,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from .sun import montreal_sunset_minutes
+
 
 def _parse_minutes(value: Any) -> int | None:
     try:
@@ -20,15 +22,22 @@ def _parse_minutes(value: Any) -> int | None:
 
 
 def is_off_now(config: dict[str, Any], now: time.struct_time | None = None) -> bool:
-    """True if the current local time falls in the configured off-window."""
+    """True if the current local time falls in the configured off-window.
+
+    ``off_start`` may be the literal ``"sunset"`` to follow Montréal's sunset.
+    """
     if not config.get("off_enabled", True):
         return False
-    start = _parse_minutes(config.get("off_start", ""))
+    now = now or time.localtime()
+
+    if str(config.get("off_start", "")).strip().lower() == "sunset":
+        start = montreal_sunset_minutes(now)
+    else:
+        start = _parse_minutes(config.get("off_start", ""))
     end = _parse_minutes(config.get("off_end", ""))
     if start is None or end is None or start == end:
         return False
 
-    now = now or time.localtime()
     minute_of_day = now.tm_hour * 60 + now.tm_min
     if start < end:
         return start <= minute_of_day < end

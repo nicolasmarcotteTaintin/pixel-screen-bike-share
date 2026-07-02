@@ -26,13 +26,13 @@ LANGUAGES = ("fr", "en")
 # Localized strings for the mode menu.
 MODE_STRINGS = {
     "fr": {
-        "title": "Mode d'affichage",
+        "title": "Mode affichage",
         "footer": "Joystick: choisir · valider",
         "confirmed": "Validé ✓",
         "options": [
-            ("velo", "Vélo", "àVélo seul"),
-            ("velo_communauto", "Vélo + Comm.", "alternance 10 s"),
-            ("communauto", "Communauto", "autos seul"),
+            ("velo", "Vélo", ""),
+            ("velo_communauto", "Vélo + Comm.", ""),
+            ("communauto", "Communauto", ""),
         ],
     },
     "en": {
@@ -40,9 +40,9 @@ MODE_STRINGS = {
         "footer": "Joystick: choose · select",
         "confirmed": "Saved ✓",
         "options": [
-            ("velo", "Bike", "àVélo only"),
-            ("velo_communauto", "Bike + Comm.", "switch 10 s"),
-            ("communauto", "Communauto", "cars only"),
+            ("velo", "Bike", ""),
+            ("velo_communauto", "Bike + Comm.", ""),
+            ("communauto", "Communauto", ""),
         ],
     },
 }
@@ -53,7 +53,7 @@ MAIN_STRINGS = {
         "title": "Réglages",
         "footer": "Joystick: choisir · ouvrir",
         "options": [
-            ("mode", "Mode d'affichage", ""),
+            ("mode", "Mode affichage", ""),
             ("rotate", "Alternance", ""),
             ("brightness", "Luminosité écran", ""),
             ("lcd_brightness", "Luminosité Pi", ""),
@@ -69,7 +69,8 @@ MAIN_STRINGS = {
         "options": [
             ("mode", "Display mode", ""),
             ("rotate", "Alternation", ""),
-            ("brightness", "Brightness", ""),
+            ("brightness", "Screen brightness", ""),
+            ("lcd_brightness", "Pi brightness", ""),
             ("sleep", "Evening off", ""),
             ("language", "Language", ""),
             ("info", "Information", ""),
@@ -84,14 +85,14 @@ ROTATE_OPTIONS = (5, 10, 15, 20, 30, 60)
 ROTATE_STRINGS = {
     "fr": {
         "title": "Alternance",
-        "footer": "Joystick: choisir · valider",
+        "footer": "Joystick ←/→ · valider",
         "confirmed": "Validé ✓",
         "unit": "s",
         "disabled_hint": "Mode Vélo + Communauto requis",
     },
     "en": {
         "title": "Alternation",
-        "footer": "Joystick: choose · select",
+        "footer": "Joystick ←/→ · select",
         "confirmed": "Saved ✓",
         "unit": "s",
         "disabled_hint": "Needs Bike + Communauto mode",
@@ -134,6 +135,7 @@ SLEEP_STRINGS = {
         "footer": "↕ champ · ←/→ régler · OK",
         "confirmed": "Validé ✓",
         "enabled": "État", "on": "Activée", "off": "Désactivée",
+        "trigger": "Déclencheur", "sunset": "Coucher", "fixed": "Heure fixe",
         "off_at": "Éteindre à", "on_at": "Rallumer à",
     },
     "en": {
@@ -141,6 +143,7 @@ SLEEP_STRINGS = {
         "footer": "↕ field · ←/→ adjust · OK",
         "confirmed": "Saved ✓",
         "enabled": "State", "on": "On", "off": "Off",
+        "trigger": "Trigger", "sunset": "Sunset", "fixed": "Fixed time",
         "off_at": "Off at", "on_at": "On at",
     },
 }
@@ -206,7 +209,7 @@ class ListMenu:
     selected: int = 0
     active_key: str | None = None
     disabled_keys: frozenset = frozenset()  # keys rendered greyed-out (still selectable)
-    max_visible: int = 6  # rows shown at once; longer lists scroll
+    max_visible: int = 5  # rows shown at once; longer lists scroll (scrollbar on the right)
 
     def __post_init__(self) -> None:
         if self.active_key is not None:
@@ -253,9 +256,11 @@ class ListMenu:
         row_height = min(60, (area_bottom - area_top - gap * (visible - 1)) // visible)
 
         label_x = 46
-        right_margin = 26  # reserved for the active marker / scroll arrows
-        avail = (SCREEN_SIZE - 12) - label_x - right_margin
-        max_label = 22 if visible <= 5 else max(13, min(20, row_height - 4))
+        # Reserve text room on the right only for the active-marker dot; the
+        # scrollbar sits in the outer margin, so marker-less menus get more width.
+        text_margin = 26 if self.active_key else 14
+        avail = (SCREEN_SIZE - 12) - label_x - text_margin
+        max_label = 24 if visible <= 5 else max(13, min(20, row_height - 4))
         label_font = _fit_font(draw, [label for _, label, _ in self.options], avail, max_label, 12)
         label_h = draw.textbbox((0, 0), "Ag", font=label_font)[3]
 
@@ -286,12 +291,16 @@ class ListMenu:
                 cy = y + row_height // 2
                 draw.ellipse((SCREEN_SIZE - 30, cy - 6, SCREEN_SIZE - 18, cy + 6), fill=ACCENT)
 
-        # Scroll hints when the list overflows the window.
-        if start > 0:
-            draw.polygon([(SCREEN_SIZE - 22, 49), (SCREEN_SIZE - 14, 49), (SCREEN_SIZE - 18, 44)], fill=TEXT_DIM)
-        if start + visible < count:
-            yb = SCREEN_SIZE - 31
-            draw.polygon([(SCREEN_SIZE - 22, yb), (SCREEN_SIZE - 14, yb), (SCREEN_SIZE - 18, yb + 5)], fill=TEXT_DIM)
+        # Scrollbar on the right when the list overflows the visible window.
+        if count > visible:
+            bar_x0, bar_x1 = SCREEN_SIZE - 8, SCREEN_SIZE - 5
+            bar_top = area_top
+            bar_bottom = area_top + visible * (row_height + gap) - gap
+            draw.rounded_rectangle((bar_x0, bar_top, bar_x1, bar_bottom), radius=1, fill=ROW_BG)
+            track = bar_bottom - bar_top
+            thumb = max(16, track * visible // count)
+            thumb_top = min(bar_top + track * start // count, bar_bottom - thumb)
+            draw.rounded_rectangle((bar_x0, thumb_top, bar_x1, thumb_top + thumb), radius=1, fill=ACCENT)
 
         footer = self.confirmed_footer if confirmed else self.footer
         if footer:
@@ -334,16 +343,62 @@ def main_menu(lang: str = "fr", selected: int = 0, mode: str | None = None) -> L
     )
 
 
-def rotate_menu(lang: str = "fr", active_seconds: int = 10) -> ListMenu:
-    strings = ROTATE_STRINGS.get(lang, ROTATE_STRINGS["fr"])
-    options = [(str(seconds), f"{seconds} {strings['unit']}", "") for seconds in ROTATE_OPTIONS]
-    return ListMenu(
-        title=strings["title"],
-        options=options,
-        footer=strings["footer"],
-        confirmed_footer=strings["confirmed"],
-        active_key=str(active_seconds),
-    )
+@dataclass
+class RotateScreen:
+    """Horizontal picker for the alternation interval, stepping through ROTATE_OPTIONS.
+
+    Adjusted with joystick left/right (hold to ramp), like the brightness screens.
+    """
+
+    seconds: int
+    lang: str = "fr"
+
+    def __post_init__(self) -> None:
+        if self.seconds in ROTATE_OPTIONS:
+            self.index = ROTATE_OPTIONS.index(self.seconds)
+        else:  # snap a non-listed value to the nearest option
+            self.index = min(range(len(ROTATE_OPTIONS)),
+                             key=lambda i: abs(ROTATE_OPTIONS[i] - self.seconds))
+
+    @property
+    def value(self) -> int:
+        return ROTATE_OPTIONS[self.index]
+
+    def adjust(self, delta: int) -> None:
+        self.index = max(0, min(len(ROTATE_OPTIONS) - 1, self.index + delta))
+
+    def render(self, confirmed: bool = False) -> Image.Image:
+        strings = ROTATE_STRINGS.get(self.lang, ROTATE_STRINGS["fr"])
+        image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
+        draw = ImageDraw.Draw(image)
+
+        draw.text((16, 12), strings["title"], font=_load_font(24), fill=TITLE)
+        draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
+
+        big = _load_font(64)
+        text = f"{self.value} {strings['unit']}"
+        width = draw.textlength(text, font=big)
+        draw.text(((SCREEN_SIZE - width) // 2, 66), text, font=big, fill=TITLE)
+
+        # Position dots for the discrete choices.
+        count = len(ROTATE_OPTIONS)
+        gap = 26
+        x0 = (SCREEN_SIZE - (count - 1) * gap) // 2
+        cy = 170
+        for i in range(count):
+            cx = x0 + i * gap
+            radius = 6 if i == self.index else 3
+            draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius),
+                         fill=ACCENT if i == self.index else ROW_BG)
+
+        footer = strings["confirmed"] if confirmed else strings["footer"]
+        draw.text((16, SCREEN_SIZE - 22), footer, font=_load_font(13),
+                  fill=ACCENT if confirmed else TEXT_DIM)
+        return image
+
+
+def rotate_screen(lang: str = "fr", seconds: int = 10) -> RotateScreen:
+    return RotateScreen(seconds=seconds, lang=lang)
 
 
 @dataclass
@@ -408,22 +463,31 @@ def hhmm_to_minutes(value: str, default: int) -> int:
 
 @dataclass
 class SleepScreen:
-    """Evening-off editor: enable toggle + off time + on time (joystick)."""
+    """Evening-off editor: state + trigger (fixed time / sunset) + off time + on time.
+
+    When ``sunset`` is on, the off time follows Montréal's sunset (resolved by the
+    daemon); the off-time row then just shows the approximate ``sunset_label``.
+    """
 
     enabled: bool
     off_minutes: int
     on_minutes: int
     lang: str = "fr"
-    field: int = 0  # 0 = state, 1 = off time, 2 = on time
+    field: int = 0  # 0 = state, 1 = trigger, 2 = off time, 3 = on time
+    sunset: bool = False
+    sunset_label: str = ""
 
     def move(self, delta: int) -> None:
-        self.field = (self.field + delta) % 3
+        self.field = (self.field + delta) % 4
 
     def adjust(self, delta: int) -> None:
         if self.field == 0:
             self.enabled = not self.enabled
         elif self.field == 1:
-            self.off_minutes = (self.off_minutes + delta * TIME_STEP_MIN) % (24 * 60)
+            self.sunset = not self.sunset
+        elif self.field == 2:
+            if not self.sunset:  # off time is fixed only when not following sunset
+                self.off_minutes = (self.off_minutes + delta * TIME_STEP_MIN) % (24 * 60)
         else:
             self.on_minutes = (self.on_minutes + delta * TIME_STEP_MIN) % (24 * 60)
 
@@ -435,43 +499,50 @@ class SleepScreen:
         draw.text((16, 12), strings["title"], font=_load_font(24), fill=TITLE)
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
-        label_font = _load_font(18)
-        value_font = _load_font(18)
+        off_value = (self.sunset_label or strings["sunset"]) if self.sunset else minutes_to_hhmm(self.off_minutes)
         rows = [
-            (strings["enabled"], strings["on"] if self.enabled else strings["off"]),
-            (strings["off_at"], minutes_to_hhmm(self.off_minutes)),
-            (strings["on_at"], minutes_to_hhmm(self.on_minutes)),
+            (strings["enabled"], strings["on"] if self.enabled else strings["off"], False),
+            (strings["trigger"], strings["sunset"] if self.sunset else strings["fixed"], False),
+            (strings["off_at"], off_value, self.sunset),  # dim the value when following sunset
+            (strings["on_at"], minutes_to_hhmm(self.on_minutes), False),
         ]
-        row_height = 50
-        top = 56
-        for index, (label, value) in enumerate(rows):
-            y = top + index * (row_height + 6)
+        label_font = _load_font(16)
+        value_font = _load_font(16)
+        top, gap = 52, 6
+        row_height = (SCREEN_SIZE - 26 - top - gap * (len(rows) - 1)) // len(rows)
+        for index, (label, value, dim_value) in enumerate(rows):
+            y = top + index * (row_height + gap)
             is_selected = index == self.field
-            # Disabled times are dimmed.
-            dim = (not self.enabled) and index > 0
+            dim = (not self.enabled) and index > 0  # only the state row matters when disabled
             draw.rounded_rectangle(
                 (12, y, SCREEN_SIZE - 12, y + row_height),
                 radius=10,
                 fill=ROW_BG_SELECTED if is_selected else ROW_BG,
             )
-            draw.text((24, y + 15), label, font=label_font,
+            vy = y + max(2, (row_height - 16) // 2)
+            draw.text((22, vy), label, font=label_font,
                       fill=TITLE if is_selected else (TEXT_DIM if dim else TEXT))
             vw = draw.textlength(value, font=value_font)
-            draw.text((SCREEN_SIZE - 28 - vw, y + 15), value, font=value_font,
-                      fill=TITLE if is_selected else (TEXT_DIM if dim else ACCENT))
+            value_dim = dim or dim_value
+            draw.text((SCREEN_SIZE - 24 - vw, vy), value, font=value_font,
+                      fill=TITLE if is_selected else (TEXT_DIM if value_dim else ACCENT))
 
         footer = strings["confirmed"] if confirmed else strings["footer"]
-        draw.text((16, SCREEN_SIZE - 22), footer, font=_load_font(13),
+        draw.text((16, SCREEN_SIZE - 22), footer, font=_load_font(12),
                   fill=ACCENT if confirmed else TEXT_DIM)
         return image
 
 
-def sleep_screen(lang: str, enabled: bool, off_start: str, off_end: str) -> SleepScreen:
+def sleep_screen(lang: str, enabled: bool, off_start: str, off_end: str,
+                 sunset_label: str = "") -> SleepScreen:
+    sunset = str(off_start).strip().lower() == "sunset"
     return SleepScreen(
         enabled=enabled,
-        off_minutes=hhmm_to_minutes(off_start, 21 * 60),
+        off_minutes=21 * 60 if sunset else hhmm_to_minutes(off_start, 21 * 60),
         on_minutes=hhmm_to_minutes(off_end, 8 * 60),
         lang=lang,
+        sunset=sunset,
+        sunset_label=sunset_label,
     )
 
 
