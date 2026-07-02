@@ -135,7 +135,7 @@ SLEEP_STRINGS = {
         "footer": "↕ champ · ←/→ régler · OK",
         "confirmed": "Validé ✓",
         "enabled": "État", "on": "Activée", "off": "Désactivée",
-        "trigger": "Déclencheur", "sunset": "Coucher", "fixed": "Heure fixe",
+        "trigger": "Déclencheur", "sunset": "Soleil", "fixed": "Heure fixe",
         "off_at": "Éteindre à", "on_at": "Rallumer à",
     },
     "en": {
