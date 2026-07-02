@@ -31,7 +31,7 @@ MODE_STRINGS = {
         "confirmed": "Validé ✓",
         "options": [
             ("velo", "Vélo", "àVélo seul"),
-            ("velo_communauto", "Vélo + Communauto", "alternance 10 s"),
+            ("velo_communauto", "Vélo + Comm.", "alternance 10 s"),
             ("communauto", "Communauto", "autos seul"),
         ],
     },
@@ -41,7 +41,7 @@ MODE_STRINGS = {
         "confirmed": "Saved ✓",
         "options": [
             ("velo", "Bike", "àVélo only"),
-            ("velo_communauto", "Bike + Communauto", "switch 10 s"),
+            ("velo_communauto", "Bike + Comm.", "switch 10 s"),
             ("communauto", "Communauto", "cars only"),
         ],
     },
@@ -160,8 +160,8 @@ BRIGHTNESS_TITLES = {
 
 BRIGHTNESS_STEP = 5
 
-# Palette (RGB).
-BG = (16, 18, 22)
+# Palette (RGB). Pure-black background for maximum contrast on the IPS panel.
+BG = (0, 0, 0)
 TITLE = (245, 245, 245)
 ROW_BG = (30, 33, 40)
 ROW_BG_SELECTED = (0, 120, 60)
@@ -499,16 +499,16 @@ class InfoScreen:
         draw.text((16, 12), self.title, font=_load_font(24), fill=TITLE)
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
-        label_font = _load_font(14)
-        value_font = _load_font(15)
+        label_font = _load_font(13)
+        value_font = _load_font(14)
         top, bottom = 52, SCREEN_SIZE - 26
         count = max(1, len(self.rows))
         row_height = (bottom - top) // count
-        value_x = 122
+        value_x = 90  # narrower label column so a full IPv4 fits on the right
         for index, (label, value) in enumerate(self.rows):
             y = top + index * row_height
             draw.text((16, y), label, font=label_font, fill=TEXT_DIM)
-            shown = _clip_to_width(draw, str(value), value_font, SCREEN_SIZE - 14 - value_x)
+            shown = _clip_to_width(draw, str(value), value_font, SCREEN_SIZE - 12 - value_x)
             draw.text((value_x, y), shown, font=value_font, fill=TEXT)
 
         if self.footer:

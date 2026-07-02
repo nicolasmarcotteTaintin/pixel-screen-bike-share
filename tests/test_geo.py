@@ -20,5 +20,5 @@ def test_bearing_cardinals():
 
 def test_format_distance():
     assert format_distance(350) == "350M"
-    assert format_distance(1200) == "1.2K"
-    assert format_distance(15000) == "15K"
+    assert format_distance(1200) == "1.2KM"
+    assert format_distance(15000) == "15KM"

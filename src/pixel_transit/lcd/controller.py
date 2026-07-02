@@ -20,7 +20,7 @@ Controls:
 * Joystick left/right  : adjust brightness (hold to ramp); the sleep editor uses them too
 * Joystick press / KEY1: validate / open
 * KEY2                 : disabled (does nothing)
-* KEY3                 : exit — turn the screen off from anywhere
+* KEY3                 : back one level (submenu -> settings); turns the screen off at the top
 
 The screen also turns itself off after ``IDLE_OFF_SECONDS`` without input.
 
@@ -55,6 +55,10 @@ IDLE_OFF_SECONDS = 30.0
 # Long-press: hold the joystick to ramp a brightness value continuously.
 REPEAT_DELAY_SECONDS = 0.4      # hold this long before auto-repeat starts
 REPEAT_INTERVAL_SECONDS = 0.08  # step cadence while held
+
+# Screens opened from the settings menu; KEY3 backs out of these to the menu
+# (rather than turning the screen off, which it does at the top level).
+SUBMENUS = frozenset({"mode", "rotate", "brightness", "lcd_brightness", "sleep", "info"})
 
 
 def _save(key: str, value) -> None:
@@ -102,12 +106,12 @@ def run_menu() -> None:
                 last_activity = time.monotonic()
 
             confirmed = False
-            go_off = False
+            key3 = False
             for raw in events:
                 if raw == "key2":
                     continue  # centre key: disabled
                 if raw == "key3":
-                    go_off = True  # last key: exit / turn the screen off
+                    key3 = True  # last key: back one level, or turn off at the top
                     break
                 event = "press" if raw == "key1" else raw  # first key = joystick click
 
@@ -142,9 +146,16 @@ def run_menu() -> None:
                     elif event == "press":
                         confirmed = True
 
-            if go_off:
-                display.set_backlight(False)
-                state = "off"
+            if key3:
+                if state in SUBMENUS:
+                    if state == "lcd_brightness":
+                        display.set_brightness(load_config().get("lcd_brightness", 100))  # revert live preview
+                    state, screen = "main", _main_menu()
+                    display.display(screen.render())
+                    last_activity = time.monotonic()
+                else:  # main / language: exit — turn the screen off
+                    display.set_backlight(False)
+                    state = "off"
                 time.sleep(POLL_SECONDS)
                 continue
 
@@ -297,12 +308,16 @@ def _flash_footer(display, menu, message: str) -> None:
     time.sleep(CONFIRM_SECONDS)
 
 
+_MODE_SHORT = {"velo": "Vélo", "velo_communauto": "Vélo+Comm.", "communauto": "Communauto"}
+
+
 def _gather_info(config) -> dict:
+    mode = config.get("mode", "—")
     return {
         "host": socket.gethostname(),
         "ip": _local_ip(),
         "ssid": get_wifi_ssid() or "—",
-        "mode": config.get("mode", "—"),
+        "mode": _MODE_SHORT.get(mode, mode),
         "network": config.get("network", "—"),
         "pixoo": config.get("pixoo_ip") or "auto",
         "brightness": f"{config.get('brightness', 80)}%",

@@ -51,7 +51,7 @@ def main() -> int:
         elif args.screen == "info":
             screen = info_screen(args.lang, {
                 "host": "bixi-pixoo", "ip": "192.168.50.156", "ssid": "MonReseau",
-                "mode": "velo_communauto", "network": "avelo",
+                "mode": "Vélo+Comm.", "network": "avelo",
                 "pixoo": "192.168.50.132", "brightness": "35%",
             })
         else:
