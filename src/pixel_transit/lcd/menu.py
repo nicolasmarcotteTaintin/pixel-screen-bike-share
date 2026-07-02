@@ -198,6 +198,12 @@ def _fit_font(draw: ImageDraw.ImageDraw, texts: list[str], max_width: int, large
     return _load_font(smallest)
 
 
+def _draw_title(draw: ImageDraw.ImageDraw, text: str) -> None:
+    """Draw a screen title at (16, 12), shrunk to fit the panel width."""
+    font = _fit_font(draw, [text], SCREEN_SIZE - 32, 24, 16)
+    draw.text((16, 12), text, font=font, fill=TITLE)
+
+
 @dataclass
 class ListMenu:
     """A vertical list of selectable options rendered to a 240x240 image."""
@@ -259,7 +265,7 @@ class ListMenu:
         draw = ImageDraw.Draw(image)
 
         sub_font = _load_font(12)
-        draw.text((16, 12), self.title, font=_load_font(24), fill=TITLE)
+        _draw_title(draw, self.title)
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
         start, visible = self._window()
@@ -385,7 +391,7 @@ class RotateScreen:
         image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
         draw = ImageDraw.Draw(image)
 
-        draw.text((16, 12), strings["title"], font=_load_font(24), fill=TITLE)
+        _draw_title(draw, strings["title"])
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
         big = _load_font(64)
@@ -434,7 +440,7 @@ class BrightnessScreen:
         image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
         draw = ImageDraw.Draw(image)
 
-        draw.text((16, 12), self.title or strings["title"], font=_load_font(24), fill=TITLE)
+        _draw_title(draw, self.title or strings["title"])
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
         # Big percentage, centred.
@@ -511,7 +517,7 @@ class SleepScreen:
         image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
         draw = ImageDraw.Draw(image)
 
-        draw.text((16, 12), strings["title"], font=_load_font(24), fill=TITLE)
+        _draw_title(draw, strings["title"])
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
         if self.sunset:
@@ -588,7 +594,7 @@ class InfoScreen:
         image = Image.new("RGB", (SCREEN_SIZE, SCREEN_SIZE), BG)
         draw = ImageDraw.Draw(image)
 
-        draw.text((16, 12), self.title, font=_load_font(24), fill=TITLE)
+        _draw_title(draw, self.title)
         draw.line((16, 44, SCREEN_SIZE - 16, 44), fill=(60, 64, 72))
 
         label_font = _load_font(13)
